@@ -23,7 +23,7 @@ export async function createSuperAdmin(dataSource: DataSource): Promise<void> {
     passwordHash,
     fullName: 'Super Admin',
     role: UserRole.SUPER_ADMIN,
-    testAdminType: null,
+    testTechnicianType: null,
     isActive: true,
     passkeyCredentialId: null,
     passkeyPublicKey: null,

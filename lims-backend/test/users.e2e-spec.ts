@@ -105,7 +105,7 @@ describe('UsersController (e2e)', () => {
       createdUserId = response.body.id;
     });
 
-    it('should return 400 if test_admin_type is missing for TEST_ADMIN role', () => {
+    it('should return 400 if test_technician_type is missing for TEST_TECHNICIAN role', () => {
       return request(app.getHttpServer())
         .post('/users')
         .set('Authorization', `Bearer ${superAdminToken}`)
@@ -113,12 +113,12 @@ describe('UsersController (e2e)', () => {
           email: 'testadmin@example.com',
           password: 'TestAdmin123!',
           fullName: 'Test Admin',
-          role: UserRole.TEST_ADMIN,
+          role: UserRole.TEST_TECHNICIAN,
         })
         .expect(400);
     });
 
-    it('should create TEST_ADMIN user with test_admin_type', async () => {
+    it('should create TEST_TECHNICIAN user with test_technician_type', async () => {
       const response = await request(app.getHttpServer())
         .post('/users')
         .set('Authorization', `Bearer ${superAdminToken}`)
@@ -126,13 +126,13 @@ describe('UsersController (e2e)', () => {
           email: 'testadmin@example.com',
           password: 'TestAdmin123!',
           fullName: 'Test Admin',
-          role: UserRole.TEST_ADMIN,
-          testAdminType: 'audiometry',
+          role: UserRole.TEST_TECHNICIAN,
+          testTechnicianType: 'audiometry',
         })
         .expect(201);
 
-      expect(response.body.role).toBe(UserRole.TEST_ADMIN);
-      expect(response.body.testAdminType).toBe('audiometry');
+      expect(response.body.role).toBe(UserRole.TEST_TECHNICIAN);
+      expect(response.body.testTechnicianType).toBe('audiometry');
     });
 
     it('should return 409 if email already exists', () => {

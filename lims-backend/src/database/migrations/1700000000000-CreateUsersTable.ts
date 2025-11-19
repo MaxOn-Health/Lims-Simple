@@ -41,7 +41,7 @@ export class CreateUsersTable1700000000000 implements MigrationInterface {
             enum: [
               'SUPER_ADMIN',
               'RECEPTIONIST',
-              'TEST_ADMIN',
+              'TEST_TECHNICIAN',
               'LAB_TECHNICIAN',
               'DOCTOR',
             ],

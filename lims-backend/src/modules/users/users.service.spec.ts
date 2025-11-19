@@ -16,7 +16,7 @@ describe('UsersService', () => {
     passwordHash: 'hashed-password',
     fullName: 'Test User',
     role: UserRole.DOCTOR,
-    testAdminType: null,
+    testTechnicianType: null,
     isActive: true,
     passkeyCredentialId: null,
     passkeyPublicKey: null,

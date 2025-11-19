@@ -102,7 +102,7 @@ describe('AssignmentsService', () => {
     passwordHash: 'hash',
     fullName: 'Test Admin',
     role: UserRole.TEST_TECHNICIAN,
-    testAdminType: 'audiometry',
+    testTechnicianType: 'audiometry',
     isActive: true,
     passkeyCredentialId: null,
     passkeyPublicKey: null,
@@ -334,9 +334,9 @@ describe('AssignmentsService', () => {
       expect(auditService.log).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException if admin testAdminType does not match', async () => {
+    it('should throw BadRequestException if admin testTechnicianType does not match', async () => {
       const dto: ReassignAssignmentDto = { adminId: 'admin-2' };
-      const wrongAdmin: User = { ...mockAdmin, id: 'admin-2', testAdminType: 'xray' };
+      const wrongAdmin: User = { ...mockAdmin, id: 'admin-2', testTechnicianType: 'xray' };
 
       jest.spyOn(assignmentsRepository, 'findOne').mockResolvedValue({
         ...mockAssignment,

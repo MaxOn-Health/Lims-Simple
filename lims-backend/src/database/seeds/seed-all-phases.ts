@@ -124,7 +124,7 @@ async function createUsers(dataSource: DataSource) {
       passwordHash,
       fullName: 'Super Admin',
       role: UserRole.SUPER_ADMIN,
-      testAdminType: null,
+      testTechnicianType: null,
       isActive: true,
     });
     superAdmin = await userRepository.save(superAdmin);
@@ -139,7 +139,7 @@ async function createUsers(dataSource: DataSource) {
       passwordHash: receptionistHash,
       fullName: 'Receptionist User',
       role: UserRole.RECEPTIONIST,
-      testAdminType: null,
+      testTechnicianType: null,
       isActive: true,
     });
     receptionist = await userRepository.save(receptionist);
@@ -147,9 +147,9 @@ async function createUsers(dataSource: DataSource) {
   users.push(receptionist);
 
   // Test Admins
-  const testAdminTypes = ['audiometry', 'xray', 'eye_test', 'pft'];
+  const testTechnicianSpecialties = ['audiometry', 'xray', 'eye_test', 'pft'];
   const testAdmins: User[] = [];
-  for (const adminType of testAdminTypes) {
+  for (const adminType of testTechnicianSpecialties) {
     let testAdmin = await userRepository.findOne({
       where: { email: `${adminType}@lims.com` },
     });
@@ -159,7 +159,7 @@ async function createUsers(dataSource: DataSource) {
         passwordHash: testAdminHash,
         fullName: `${adminType.charAt(0).toUpperCase() + adminType.slice(1)} Admin`,
         role: UserRole.TEST_TECHNICIAN,
-        testAdminType: adminType,
+        testTechnicianType: adminType,
         isActive: true,
       });
       testAdmin = await userRepository.save(testAdmin);
@@ -176,7 +176,7 @@ async function createUsers(dataSource: DataSource) {
       passwordHash: labTechHash,
       fullName: 'Lab Technician',
       role: UserRole.LAB_TECHNICIAN,
-      testAdminType: null,
+      testTechnicianType: null,
       isActive: true,
     });
     labTechnician = await userRepository.save(labTechnician);
@@ -195,7 +195,7 @@ async function createUsers(dataSource: DataSource) {
       passwordHash: doctorHash,
       fullName: 'Dr. Test Doctor',
       role: UserRole.DOCTOR,
-      testAdminType: null,
+      testTechnicianType: null,
       isActive: true,
     });
     doctor = await userRepository.save(doctor);
@@ -504,7 +504,7 @@ async function createAssignments(
       if (!test) continue;
 
       // Find appropriate admin
-      const admin = testAdmins.find((a) => a.testAdminType === test.adminRole);
+      const admin = testAdmins.find((a) => a.testTechnicianType === test.adminRole);
       if (!admin && test.adminRole !== 'lab') continue;
 
       let assignment = await assignmentRepository.findOne({
@@ -552,7 +552,7 @@ async function submitResults(
     if (existingResult) continue;
 
     // Get admin for this test
-    const admin = testAdmins.find((a) => a.testAdminType === test?.adminRole);
+    const admin = testAdmins.find((a) => a.testTechnicianType === test?.adminRole);
     if (!admin) continue;
 
     // Create result values based on test fields

@@ -21,7 +21,7 @@ describe('UsersController', () => {
     passwordHash: 'hashed-password',
     fullName: 'Test User',
     role: UserRole.DOCTOR,
-    testAdminType: null,
+    testTechnicianType: null,
     isActive: true,
     passkeyCredentialId: null,
     passkeyPublicKey: null,
@@ -111,7 +111,7 @@ describe('UsersController', () => {
       const testAdminDto: CreateUserDto = {
         ...createUserDto,
         role: UserRole.TEST_TECHNICIAN,
-        testAdminType: 'audiometry',
+        testTechnicianType: 'audiometry',
       };
       jest.spyOn(passwordService, 'hashPassword').mockResolvedValue('hashed-password');
       jest.spyOn(usersService, 'create').mockResolvedValue(mockUser);

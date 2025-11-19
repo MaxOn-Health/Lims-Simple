@@ -16,8 +16,8 @@ describe('AdminSelectionService', () => {
     email: 'admin1@lims.com',
     passwordHash: 'hash',
     fullName: 'Admin One',
-    role: UserRole.TEST_ADMIN,
-    testAdminType: 'audiometry',
+    role: UserRole.TEST_TECHNICIAN,
+    testTechnicianType: 'audiometry',
     isActive: true,
     passkeyCredentialId: null,
     passkeyPublicKey: null,
@@ -30,8 +30,8 @@ describe('AdminSelectionService', () => {
     email: 'admin2@lims.com',
     passwordHash: 'hash',
     fullName: 'Admin Two',
-    role: UserRole.TEST_ADMIN,
-    testAdminType: 'audiometry',
+    role: UserRole.TEST_TECHNICIAN,
+    testTechnicianType: 'audiometry',
     isActive: true,
     passkeyCredentialId: null,
     passkeyPublicKey: null,
@@ -115,16 +115,16 @@ describe('AdminSelectionService', () => {
       expect(result).toEqual(mockUser1); // admin-1 is older (created earlier)
     });
 
-    it('should filter by testAdminType', async () => {
+    it('should filter by testTechnicianType', async () => {
       jest.spyOn(usersRepository, 'find').mockResolvedValue([mockUser1]);
 
       await service.findAvailableAdmin('audiometry');
 
       expect(usersRepository.find).toHaveBeenCalledWith({
         where: {
-          role: UserRole.TEST_ADMIN,
+          role: UserRole.TEST_TECHNICIAN,
           isActive: true,
-          testAdminType: 'audiometry',
+          testTechnicianType: 'audiometry',
         },
       });
     });

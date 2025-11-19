@@ -20,7 +20,7 @@ describe('AuthService', () => {
     passwordHash: 'hashed-password',
     fullName: 'Test User',
     role: UserRole.SUPER_ADMIN,
-    testAdminType: null,
+    testTechnicianType: null,
     isActive: true,
     passkeyCredentialId: null,
     passkeyPublicKey: null,

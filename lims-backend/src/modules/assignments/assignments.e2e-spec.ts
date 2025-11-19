@@ -38,7 +38,7 @@ describe('AssignmentsController (e2e)', () => {
         password: 'Test@123',
         fullName: 'Test Admin',
         role: 'TEST_TECHNICIAN',
-        testAdminType: 'audiometry',
+        testTechnicianType: 'audiometry',
       });
     adminUserId = createAdminRes.body.id;
 

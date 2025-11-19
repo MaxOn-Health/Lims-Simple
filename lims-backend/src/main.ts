@@ -25,10 +25,16 @@ async function bootstrap() {
   );
 
   // Enable CORS
+  const allowedOrigins = nodeEnv === 'development'
+    ? true // Allow all origins in development
+    : [
+        frontendUrl,
+        'https://lims-frontend-blond.vercel.app',
+        'https://lims-frontend.onrender.com',
+      ].filter(Boolean);
+
   app.enableCors({
-    origin: nodeEnv === 'development' 
-      ? true // Allow all origins in development
-      : frontendUrl,
+    origin: allowedOrigins,
     credentials: true,
   });
 

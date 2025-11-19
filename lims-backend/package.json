@@ -22,6 +22,7 @@
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/config/data-source.config.ts",
     "seed:run": "ts-node src/database/seeds/run-seed.ts",
     "seed:all": "ts-node src/database/seeds/seed-all-phases.ts",
+    "seed:tests": "ts-node src/database/seeds/seed-tests.seed.ts",
     "db:clean": "ts-node src/database/seeds/clean-database.ts"
   },
   "keywords": [

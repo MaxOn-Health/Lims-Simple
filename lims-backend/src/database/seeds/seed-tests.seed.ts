@@ -91,6 +91,73 @@ export async function seedTests(dataSource: DataSource): Promise<void> {
   console.log('Test name:', audiometryTestData.name);
   console.log('Admin role:', audiometryTestData.adminRole);
   console.log('Test fields count:', audiometryTestData.testFields.length);
+
+  // Define Eye Test with complete field structure matching UI expectations
+  const eyeTestData = {
+    name: 'Eye Test',
+    description: 'Vision test with distance/near vision, eye parameters, and eye health',
+    category: TestCategory.ON_SITE,
+    adminRole: 'eye_test',
+    normalRangeMin: 6,
+    normalRangeMax: 6,
+    unit: 'meters',
+    testFields: [
+      // Vision fields (8 fields: 2 vision types × 2 eyes × 2 glass types)
+      // Distance vision
+      { field_name: 'distance_vision_right_without_glass', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'distance_vision_right_with_glass', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'distance_vision_left_without_glass', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'distance_vision_left_with_glass', field_type: TestFieldType.NUMBER, required: false, options: null },
+      // Near vision
+      { field_name: 'near_vision_right_without_glass', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'near_vision_right_with_glass', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'near_vision_left_without_glass', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'near_vision_left_with_glass', field_type: TestFieldType.NUMBER, required: false, options: null },
+      // Eye parameters (10 fields: 5 parameters × 2 eyes)
+      { field_name: 'sph_right', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'cyl_right', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'axis_right', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'add_right', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'vision_right', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'sph_left', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'cyl_left', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'axis_left', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'add_left', field_type: TestFieldType.NUMBER, required: false, options: null },
+      { field_name: 'vision_left', field_type: TestFieldType.NUMBER, required: false, options: null },
+      // Eye health (5 fields)
+      { field_name: 'eye_lids', field_type: TestFieldType.TEXT, required: false, options: null },
+      { field_name: 'conjunctiva', field_type: TestFieldType.TEXT, required: false, options: null },
+      { field_name: 'cornea', field_type: TestFieldType.TEXT, required: false, options: null },
+      { field_name: 'pupil', field_type: TestFieldType.TEXT, required: false, options: null },
+      { field_name: 'colour_blindness', field_type: TestFieldType.TEXT, required: false, options: null },
+      // Vision status (2 fields)
+      { field_name: 'normal_vision', field_type: TestFieldType.TEXT, required: false, options: null },
+      { field_name: 'near_normal_vision', field_type: TestFieldType.TEXT, required: false, options: null },
+    ] as TestField[],
+    isActive: true,
+  };
+
+  // Check if Eye Test already exists
+  const existingEyeTest = await testRepository.findOne({
+    where: { name: eyeTestData.name },
+  });
+
+  if (existingEyeTest) {
+    console.log('Eye Test already exists. Updating...');
+    // Update existing test
+    Object.assign(existingEyeTest, eyeTestData);
+    await testRepository.save(existingEyeTest);
+    console.log('Eye Test updated successfully');
+  } else {
+    // Create new test
+    const eyeTest = testRepository.create(eyeTestData);
+    await testRepository.save(eyeTest);
+    console.log('Eye Test created successfully');
+  }
+
+  console.log('Eye Test name:', eyeTestData.name);
+  console.log('Eye Test admin role:', eyeTestData.adminRole);
+  console.log('Eye Test fields count:', eyeTestData.testFields.length);
 }
 
 async function runSeed() {

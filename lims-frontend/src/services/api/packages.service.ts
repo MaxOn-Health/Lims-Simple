@@ -12,7 +12,7 @@ export const packagesService = {
   async getPackages(query?: QueryPackagesParams): Promise<Package[]> {
     const params = new URLSearchParams();
     if (query?.isActive !== undefined) {
-      params.append('is_active', query.isActive.toString());
+      params.append('isActive', query.isActive.toString());
     }
 
     const response = await apiClient.get<Package[]>(

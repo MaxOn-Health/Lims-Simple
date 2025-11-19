@@ -81,6 +81,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         setTests(testsData);
       } catch (err) {
         const apiError = err as ApiError;
+        console.error('Failed to fetch tests for patient form:', apiError);
+        console.error('Error details:', {
+          message: getErrorMessage(apiError),
+          status: apiError?.response?.status,
+          data: apiError?.response?.data,
+        });
         addToast({
           type: 'error',
           message: getErrorMessage(apiError),

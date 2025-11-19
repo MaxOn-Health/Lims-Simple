@@ -56,7 +56,7 @@ export class PackagesController {
 
   @Get()
   @ApiOperation({ summary: 'Get all packages (all authenticated users)' })
-  @ApiQuery({ name: 'is_active', required: false, type: Boolean })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean, description: 'Filter by active status (true/false)' })
   @ApiResponse({
     status: 200,
     description: 'List of packages',

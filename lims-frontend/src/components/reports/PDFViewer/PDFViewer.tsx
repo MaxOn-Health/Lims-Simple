@@ -6,8 +6,6 @@ import { Button } from '@/components/common/Button/Button';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize, Download, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { tokenStorage } from '@/services/storage/token.storage';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
 
 // Set up PDF.js worker
 if (typeof window !== 'undefined') {
@@ -31,6 +29,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);

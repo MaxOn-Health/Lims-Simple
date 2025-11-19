@@ -59,24 +59,39 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     // Database module
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('database.host'),
-        port: configService.get<number>('database.port'),
-        username: configService.get<string>('database.username'),
-        password: configService.get<string>('database.password'),
-        database: configService.get<string>('database.database'),
-        synchronize: false,
-        logging: configService.get<string>('app.nodeEnv') === 'development',
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
-        migrationsRun: false,
-        migrationsTableName: 'migrations',
-        extra: {
-          max: 10,
-          connectionTimeoutMillis: 2000,
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const dbConfig = configService.get('database');
+        const baseConfig = {
+          type: 'postgres' as const,
+          synchronize: false,
+          logging: configService.get<string>('app.nodeEnv') === 'development',
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
+          migrationsRun: false,
+          migrationsTableName: 'migrations',
+          extra: {
+            max: 10,
+            connectionTimeoutMillis: 2000,
+          },
+        };
+
+        // If DATABASE_URL is provided, use url; otherwise use individual properties
+        if (dbConfig?.url) {
+          return {
+            ...baseConfig,
+            url: dbConfig.url,
+          };
+        }
+
+        return {
+          ...baseConfig,
+          host: dbConfig?.host || 'localhost',
+          port: dbConfig?.port || 5432,
+          username: dbConfig?.username || 'postgres',
+          password: dbConfig?.password || 'postgres',
+          database: dbConfig?.database || 'lims_db',
+        };
+      },
       inject: [ConfigService],
     }),
         AuthModule,

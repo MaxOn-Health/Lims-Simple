@@ -80,6 +80,9 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
           return {
             ...baseConfig,
             url: dbConfig.url,
+            ssl: {
+              rejectUnauthorized: false,
+            },
           };
         }
 

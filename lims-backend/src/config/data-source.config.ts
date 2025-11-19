@@ -14,7 +14,12 @@ const dataSourceOptions: DataSourceOptions = {
 };
 
 if (process.env.DATABASE_URL) {
-  Object.assign(dataSourceOptions, { url: process.env.DATABASE_URL });
+  Object.assign(dataSourceOptions, { 
+    url: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false,
+    },
+  });
 } else {
   Object.assign(dataSourceOptions, {
     host: process.env.DATABASE_HOST || 'localhost',

@@ -16,7 +16,7 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: npm install && npx nest build
+    buildCommand: NODE_ENV=development npm install && npm run build
     startCommand: npm run start:prod
     healthCheckPath: /
     envVars:

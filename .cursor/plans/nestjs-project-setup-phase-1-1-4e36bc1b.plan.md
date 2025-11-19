@@ -61,49 +61,49 @@ Create a complete Blood Samples Module that allows RECEPTIONIST users to registe
 
 - **BloodSamplesService** (`lims-backend/src/modules/blood-samples/blood-samples.service.ts`)
 - `register(dto: RegisterBloodSampleDto, userId: string): Promise<{ sampleId: string, passcode: string }>`
-  - Generate sample ID
-  - Generate and hash passcode
-  - Create blood_sample record
-  - Find blood test for patient (category='lab')
-  - Create assignment for blood test
-  - Log action
-  - Return sampleId and plain passcode (only time it's shown)
+- Generate sample ID
+- Generate and hash passcode
+- Create blood_sample record
+- Find blood test for patient (category='lab')
+- Create assignment for blood test
+- Log action
+- Return sampleId and plain passcode (only time it's shown)
 
 - `access(dto: AccessBloodSampleDto, userId: string): Promise<BloodSampleResponseDto>`
-  - Find sample by sampleId
-  - Verify passcode
-  - Validate status is COLLECTED or IN_LAB
-  - Update status to IN_LAB if COLLECTED
-  - Track that user accessed this sample (for "my samples" query)
-  - Log access
-  - Return sample with patient info
+- Find sample by sampleId
+- Verify passcode
+- Validate status is COLLECTED or IN_LAB
+- Update status to IN_LAB if COLLECTED
+- Track that user accessed this sample (for "my samples" query)
+- Log access
+- Return sample with patient info
 
 - `updateStatus(id: string, dto: UpdateBloodSampleStatusDto, userId: string): Promise<BloodSampleResponseDto>`
-  - Validate user has accessed this sample (or is SUPER_ADMIN)
-  - Update status
-  - Update testedAt/testedBy if status is TESTED
-  - Log change
+- Validate user has accessed this sample (or is SUPER_ADMIN)
+- Update status
+- Update testedAt/testedBy if status is TESTED
+- Log change
 
 - `findById(id: string, userId: string): Promise<BloodSampleResponseDto>`
-  - Check access: LAB_TECHNICIAN must have accessed sample, SUPER_ADMIN can access any
-  - Return sample details
+- Check access: LAB_TECHNICIAN must have accessed sample, SUPER_ADMIN can access any
+- Return sample details
 
 - `findMySamples(userId: string, status?: BloodSampleStatus): Promise<BloodSampleResponseDto[]>`
-  - Get all samples accessed by current user
-  - Filter by status if provided
+- Get all samples accessed by current user
+- Filter by status if provided
 
 - `submitResult(id: string, dto: SubmitBloodTestResultDto, userId: string): Promise<ResultResponseDto>`
-  - Get sample with assignment
-  - Validate user has accessed sample
-  - Validate sample status is IN_LAB or TESTED
-  - Get test from assignment
-  - Validate result values using ResultValidationService
-  - Create test_result record (reuse ResultsService logic)
-  - Update sample status to TESTED
-  - Update assignment status to SUBMITTED
-  - Set testedAt and testedBy
-  - Log action
-  - Return created result
+- Get sample with assignment
+- Validate user has accessed sample
+- Validate sample status is IN_LAB or TESTED
+- Get test from assignment
+- Validate result values using ResultValidationService
+- Create test_result record (reuse ResultsService logic)
+- Update sample status to TESTED
+- Update assignment status to SUBMITTED
+- Set testedAt and testedBy
+- Log action
+- Return created result
 
 ### 4. Controller
 
@@ -148,13 +148,13 @@ Create a complete Blood Samples Module that allows RECEPTIONIST users to registe
 
 - **E2E Tests**
 - `blood-samples.e2e-spec.ts` - Test complete workflows:
-  - Register sample and get passcode
-  - Access sample with passcode
-  - Access sample with wrong passcode (should fail)
-  - Update sample status
-  - Submit blood test result
-  - Get my samples
-  - Verify passcode cannot be retrieved after registration
+- Register sample and get passcode
+- Access sample with passcode
+- Access sample with wrong passcode (should fail)
+- Update sample status
+- Submit blood test result
+- Get my samples
+- Verify passcode cannot be retrieved after registration
 
 ## Key Implementation Details
 

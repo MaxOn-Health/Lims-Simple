@@ -1,0 +1,6 @@
+export { AudiometryResultView } from './AudiometryResultView';
+
+
+
+
+

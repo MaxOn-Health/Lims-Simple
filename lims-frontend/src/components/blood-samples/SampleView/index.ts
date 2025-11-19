@@ -1,0 +1,2 @@
+export { SampleView } from './SampleView';
+

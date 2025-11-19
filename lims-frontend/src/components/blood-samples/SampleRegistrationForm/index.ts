@@ -1,0 +1,2 @@
+export { SampleRegistrationForm } from './SampleRegistrationForm';
+

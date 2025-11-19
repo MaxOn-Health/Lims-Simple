@@ -1,0 +1,2 @@
+export { SampleStatusBadge } from './SampleStatusBadge';
+

@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oasis School | A New Era of Education</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --primary: #121629; /* Deep Navy */
+            --accent: #B48A63; /* Muted Bronze/Gold */
+            --background: #FDFDFB; /* Warm Off-White */
+            --text-dark: #121629;
+            --text-light: #707070;
+            --border-color: #EAEAEA;
+            
+            --spacing-section: 120px;
+            --transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        /* Reset & Base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--background);
+            color: var(--text-dark);
+            line-height: 1.7;
+            font-weight: 300;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1.2;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: clamp(3.5rem, 6vw, 5.5rem);
+            letter-spacing: -1px;
+        }
+        
+        h2 {
+            font-size: clamp(2.5rem, 5vw, 3.5rem);
+        }
+        
+        h3 {
+             font-size: 1.75rem;
+             font-weight: 600;
+        }
+
+        p {
+            color: var(--text-light);
+            margin-bottom: 24px;
+            font-size: 1.05rem;
+            max-width: 65ch; /* Optimal reading width */
+        }
+
+        a {
+            text-decoration: none;
+            color: var(--accent);
+            transition: var(--transition);
+        }
+        
+        ul { list-style: none; }
+        img { max-width: 100%; display: block; object-fit: cover; }
+
+        /* Utilities */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 30px;
+        }
+        
+        .section-padding {
+            padding: var(--spacing-section) 0;
+        }
+        
+        /* MODERN CTA (Button Replacement) */
+        .cta-link {
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        .cta-link .arrow {
+            transition: transform 0.3s ease;
+        }
+
+        .cta-link:hover .arrow {
+            transform: translateX(5px);
+        }
+        
+        .cta-link::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background-color: var(--accent);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: var(--transition);
+        }
+        
+        .cta-link:hover::after {
+            transform: scaleX(1);
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            padding: 30px 0;
+            transition: var(--transition);
+        }
+
+        header.scrolled {
+            background: rgba(253, 253, 251, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        }
+
+        .nav-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 40px;
+        }
+
+        .nav-links a {
+            font-size: 0.95rem;
+            font-weight: 400;
+            color: var(--text-dark);
+            position: relative;
+        }
+        
+        .nav-links a:hover {
+            color: var(--accent);
+        }
+        
+        .nav-links a.nav-cta {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .mobile-toggle {
+            display: none;
+            cursor: pointer;
+            color: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 90vh;
+            display: flex;
+            align-items: center;
+            padding-top: 120px;
+        }
+
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .hero-text {
+            animation: fadeInUp 1s forwards 0.2s;
+            opacity: 0;
+        }
+
+        .hero-text p {
+            font-size: 1.25rem;
+            max-width: 50ch;
+            margin-bottom: 40px;
+        }
+
+        .hero-visual {
+            animation: scaleIn 1.2s forwards 0.4s;
+            opacity: 0;
+        }
+        
+        .hero-visual img {
+            width: 100%;
+            height: 75vh;
+            object-fit: cover;
+            border-bottom-left-radius: 120px; /* Unique shape */
+            border-top-right-radius: 120px;
+        }
+
+        /* About Section (Editorial Style) */
+        .about {
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 80px;
+            align-items: flex-start;
+        }
+        
+        .about-grid h2 {
+            position: sticky; /* Sticky heading */
+            top: 100px;
+        }
+
+        .about-content p {
+            font-size: 1.15rem;
+            margin-bottom: 30px;
+        }
+        
+        .about-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .stat-item h3 {
+            font-size: 3rem;
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+        
+        .stat-item span {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Programs Section (No Cards) */
+        .programs-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 60px;
+        }
+        
+        .program-item {
+            position: relative;
+            padding-top: 40px; /* Space for the number */
+        }
+        
+        .program-item::before {
+            content: attr(data-number);
+            position: absolute;
+            top: 0;
+            left: 0;
+            font-size: 5rem;
+            font-weight: 700;
+            font-family: 'Cormorant Garamond', serif;
+            color: var(--accent);
+            opacity: 0.2;
+            line-height: 1;
+        }
+        
+        .program-item h3 {
+            margin-bottom: 15px;
+        }
+        
+        .program-item p {
+            font-size: 0.95rem;
+            margin-bottom: 25px;
+        }
+
+        /* Feature Section (Quote/Testimonial Replacement) */
+        .feature-quote {
+            text-align: center;
+            padding: 80px 0;
+            background-color: #F8F6F2; /* Slightly darker bg */
+            border-radius: 20px;
+        }
+        
+        .feature-quote h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            max-width: 800px;
+            margin: 0 auto 30px;
+            font-style: italic;
+            font-weight: 600;
+        }
+        
+        .feature-quote span {
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text-dark);
+        }
+
+        /* Events Section (List View) */
+        .events-list {
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .event-item {
+            display: grid;
+            grid-template-columns: 1fr 3fr 1fr;
+            gap: 40px;
+            align-items: center;
+            padding: 40px 0;
+            border-bottom: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+        
+        .event-item:hover {
+            background-color: #F8F6F2;
+            padding: 40px 20px;
+        }
+        
+        .event-date {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .event-item h4 {
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin: 0;
+        }
+        
+        .event-item .cta-link {
+            justify-self: end;
+        }
+
+        /* FAQ Section (Cleaned Accordion) */
+        .faq-accordion {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .faq-item {
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .faq-question {
+            width: 100%;
+            background: none;
+            border: none;
+            text-align: left;
+            padding: 40px 0;
+            font-size: 1.5rem;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 600;
+            color: var(--primary);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .faq-icon {
+            transition: var(--transition);
+            min-width: 24px;
+        }
+        
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out;
+        }
+        
+        .faq-answer p {
+            padding-bottom: 40px;
+            max-width: 80ch;
+        }
+        
+        .faq-item.active .faq-answer {
+            max-height: 200px; /* Adjust as needed */
+        }
+        
+        .faq-item.active .faq-icon {
+            transform: rotate(45deg);
+        }
+
+        /* CTA Section */
+        .cta-section {
+            text-align: center;
+        }
+        .cta-section h2 {
+            margin-bottom: 40px;
+        }
+
+        /* Footer */
+        footer {
+            background-color: var(--primary);
+            color: var(--background);
+            padding: 100px 0 60px;
+            margin-top: var(--spacing-section);
+        }
+        .footer-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 60px;
+            margin-bottom: 80px;
+        }
+        .footer-brand .logo {
+            color: var(--background);
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+        .footer-brand p {
+            color: var(--background);
+            opacity: 0.7;
+            max-width: 300px;
+            font-size: 0.95rem;
+        }
+        
+        .footer-col h4 {
+            color: var(--accent);
+            font-family: 'Lato', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 24px;
+        }
+        .footer-links li {
+            margin-bottom: 12px;
+        }
+        .footer-links a {
+            color: var(--background);
+            opacity: 0.7;
+            font-size: 0.95rem;
+        }
+        .footer-links a:hover {
+            opacity: 1;
+            padding-left: 5px;
+            color: var(--accent);
+        }
+        .copyright {
+            text-align: center;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+            color: var(--background);
+            opacity: 0.5;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 1s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .hero-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+            .hero-text p {
+                margin: 0 auto 40px;
+            }
+            .hero-visual {
+                margin-top: 40px;
+                grid-row: 1;
+            }
+            .hero-visual img {
+                height: 50vh;
+            }
+            .about-grid {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            .about-grid h2 {
+                position: static;
+            }
+            .programs-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .event-item {
+                grid-template-columns: 1fr 2fr;
+                gap: 20px;
+            }
+            .event-item .cta-link {
+                grid-column: 1 / -1;
+                justify-self: start;
+                margin-top: 15px;
+            }
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.75rem; }
+            h2 { font-size: 2rem; }
+            
+            .nav-links {
+                display: none; /* Simplified for demo */
+            }
+            .mobile-toggle {
+                display: block;
+            }
+            .programs-grid {
+                grid-template-columns: 1fr;
+            }
+            .event-item {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            .event-item .cta-link {
+                margin-top: 10px;
+            }
+            .faq-question {
+                font-size: 1.2rem;
+                padding: 30px 0;
+            }
+            .footer-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header id="header">
+        <div class="container nav-wrapper">
+            <a href="#" class="logo">Oasis School</a>
+            
+            <nav>
+                <ul class="nav-links" id="navLinks">
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#programs">Programs</a></li>
+                    <li><a href="#events">Events</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                    <li><a href="#contact" class="nav-cta">Apply Now</a></li>
+                </ul>
+            </nav>
+
+            <div class="mobile-toggle" id="mobileMenu">
+                <i data-lucide="menu"></i>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container hero-content">
+                <div class="hero-text">
+                    <h1>A Legacy of Learning, A Future of Vision.</h1>
+                    <p>We are not just a school; we are a community dedicated to cultivating the next generation of thinkers, innovators, and leaders.</p>
+                    <a href="#programs" class="cta-link">
+                        <span>Explore Our Philosophy</span>
+                        <i data-lucide="arrow-right" class="arrow" size="18"></i>
+                    </a>
+                </div>
+                <div class="hero-visual">
+                    <img src="https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=2070&auto=format&fit=crop" alt="Students in a bright, modern library">
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="about section-padding">
+            <div class="container about-grid">
+                <h2 class="reveal">Our Mission is Clear.</h2>
+                <div class="about-content reveal">
+                    <p>At Oasis, we provide an education that transcends traditional boundaries. We believe in fostering a deep-seated curiosity about the world, empowering students with the critical thinking skills to navigate its complexities, and instilling a sense of responsibility to contribute positively to society.</p>
+                    <p>Our approach is holistic, blending rigorous academics with comprehensive programs in the arts, athletics, and global studies. We create an environment where students are encouraged to challenge assumptions, express themselves confidently, and grow into compassionate, well-rounded individuals.</p>
+                    <div class="about-stats">
+                        <div class="stat-item">
+                            <h3>12:1</h3>
+                            <span>Student-Faculty Ratio</span>
+                        </div>
+                        <div class="stat-item">
+                            <h3>40+</h3>
+                            <span>Clubs & Activities</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Programs Section -->
+        <section id="programs" class="section-padding">
+            <div class="container">
+                <h2 style="text-align: center; max-width: 600px; margin: 0 auto 80px;" class="reveal">A Curriculum for the Modern World.</h2>
+                <div class="programs-grid">
+                    <div class="program-item reveal" data-number="01">
+                        <h3>Primary School</h3>
+                        <p>Foundational years focused on inquiry-based learning, creativity, and establishing a lifelong love for discovery.</p>
+                        <a href="#" class="cta-link">
+                            <span>Learn More</span>
+                            <i data-lucide="arrow-right" class="arrow" size="16"></i>
+                        </a>
+                    </div>
+                    <div class="program-item reveal" data-number="02" style="transition-delay: 0.1s;">
+                        <h3>Middle School</h3>
+                        <p>A dynamic period of growth, encouraging students to explore new interests, develop critical thinking, and build character.</p>
+                        <a href="#" class="cta-link">
+                            <span>Learn More</span>
+                            <i data-lucide="arrow-right" class="arrow" size="16"></i>
+                        </a>
+                    </div>
+                    <div class="program-item reveal" data-number="03" style="transition-delay: 0.2s;">
+                        <h3>High School</h3>
+                        <p>Advanced, specialized studies prepare students for university and beyond, with a focus on leadership and real-world application.</p>
+                        <a href="#" class="cta-link">
+                            <span>Learn More</span>
+                            <i data-lucide="arrow-right" class="arrow" size="16"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature Quote Section -->
+        <section class="section-padding">
+            <div class="container">
+                <div class="feature-quote reveal">
+                    <h2>"Oasis gave me the courage to not just ask 'What?', but to pursue 'What if?'"</h2>
+                    <span>— Alumna, Class of 2023</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Events Section -->
+        <section id="events" class="section-padding">
+            <div class="container">
+                <h2 style="margin-bottom: 60px;" class="reveal">Join Our Community</h2>
+                <div class="events-list">
+                    <div class="event-item reveal">
+                        <span class="event-date">Nov 28, 2024</span>
+                        <h4>Annual 'Innovate' Science Symposium</h4>
+                        <a href="#" class="cta-link">
+                            <span>Details</span>
+                            <i data-lucide="arrow-right" class="arrow" size="16"></i>
+                        </a>
+                    </div>
+                    <div class="event-item reveal">
+                        <span class="event-date">Dec 05, 2024</span>
+                        <h4>Winter Arts & Music Showcase</h4>
+                        <a href="#" class="cta-link">
+                            <span>Details</span>
+                            <i data-lucide="arrow-right" class="arrow" size="16"></i>
+                        </a>
+                    </div>
+                    <div class="event-item reveal">
+                        <span class="event-date">Dec 12, 2024</span>
+                        <h4>Campus Open Day (Prospective Families)</h4>
+                        <a href="#" class="cta-link">
+                            <span>RSVP</span>
+                            <i data-lucide="arrow-right" class="arrow" size="16"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section id="faq" class="section-padding" style="background-color: #F8F6F2;">
+            <div class="container">
+                <h2 style="text-align: center; margin-bottom: 60px;" class="reveal">Your Questions, Answered.</h2>
+                <div class="faq-accordion">
+                    <div class="faq-item reveal">
+                        <button class="faq-question">
+                            <span>What is the admissions process like?</span>
+                            <i data-lucide="plus" class="faq-icon"></i>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Our admissions process is designed to be holistic. It includes an online application, previous school transcripts, teacher recommendations, and a personal interview. We aim to understand each applicant as a whole person, not just a set of grades.</p>
+                        </div>
+                    </div>
+                    <div class="faq-item reveal">
+                        <button class="faq-question">
+                            <span>Is financial aid available?</span>
+                            <i data-lucide="plus" class="faq-icon"></i>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Yes, Oasis School is committed to socioeconomic diversity. We offer comprehensive, need-based financial aid and a number of merit scholarships. We encourage all families to apply regardless of their financial circumstances.</p>
+                        </div>
+                    </div>
+                    <div class="faq-item reveal">
+                        <button class="faq-question">
+                            <span>What makes the 'Oasis Method' different?</span>
+                            <i data-lucide="plus" class="faq-icon"></i>
+                        </button>
+                        <div class="faq-answer">
+                            <p>The 'Oasis Method' is our proprietary, project-based learning framework. Instead of traditional exams, students often work in collaborative teams to solve real-world problems, blending science, arts, and humanities. This develops deep knowledge alongside practical skills in communication and teamwork.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final CTA -->
+        <section id="contact" class="cta-section section-padding">
+            <div class="container">
+                <h2 class="reveal">Begin Your Journey at Oasis.</h2>
+                <a href="#" class="cta-link reveal" style="font-size: 1.2rem;">
+                    <span>Start Your Application</span>
+                    <i data-lucide="arrow-right" class="arrow" size="22"></i>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="#" class="logo">Oasis School</a>
+                    <p>123 Education Lane, Oasis City, ST 90210</p>
+                </div>
+                
+                <div class="footer-col">
+                    <h4>Explore</h4>
+                    <ul class="footer-links">
+                        <li><a href="#about">About Us</a></li>
+                        <li><a href="#programs">Academics</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">News</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4>Resources</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">Parent Portal</a></li>
+                        <li><a href="#">Faculty Directory</a></li>
+                        <li><a href="#">Calendar</a></li>
+                        <li><a href="#">Library</a></li>
+                    </ul>
+                </div>
+
+                <div class="footer-col">
+                    <h4>Connect</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">Instagram</a></li>
+                        <li><a href="#">Twitter</a></li>
+                        <li><a href="#">LinkedIn</a></li>
+                        <li><a href="#">Contact Us</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                &copy; 2023 Oasis School. A New Standard in Education.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Navbar Scroll Effect
+        const header = document.querySelector('#header');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+
+        // Mobile Menu Toggle
+        const menuBtn = document.getElementById('mobileMenu');
+        const navLinks = document.getElementById('navLinks');
+        // Simple toggle (no menu implemented in this demo)
+        menuBtn.addEventListener('click', () => {
+            alert('Mobile menu clicked!');
+        });
+
+        // FAQ Accordion
+        const faqItems = document.querySelectorAll('.faq-item');
+        faqItems.forEach(item => {
+            const question = item.querySelector('.faq-question');
+            question.addEventListener('click', () => {
+                const isActive = item.classList.contains('active');
+                
+                // Close all other items
+                faqItems.forEach(otherItem => {
+                    otherItem.classList.remove('active');
+                    otherItem.querySelector('.faq-icon').style.transform = 'rotate(0deg)';
+                    otherItem.querySelector('i[data-lucide]').setAttribute('data-lucide', 'plus');
+                });
+                
+                // Open the clicked item if it wasn't already active
+                if (!isActive) {
+                    item.classList.add('active');
+                    item.querySelector('.faq-icon').style.transform = 'rotate(45deg)';
+                    item.querySelector('i[data-lucide]').setAttribute('data-lucide', 'plus'); // Still 'plus' but rotated, or 'x'
+                }
+                
+                // Re-render icons if changed
+                lucide.createIcons();
+            });
+        });
+
+        // Intersection Observer for Scroll Animations
+        const revealElements = document.querySelectorAll('.reveal');
+        const revealObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.1,
+            rootMargin: "0px 0px -50px 0px"
+        });
+        revealElements.forEach(el => revealObserver.observe(el));
+        
+    </script>
+</body>
+</html>

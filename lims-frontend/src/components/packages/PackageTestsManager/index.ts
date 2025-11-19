@@ -1,0 +1,2 @@
+export { PackageTestsManager } from './PackageTestsManager';
+

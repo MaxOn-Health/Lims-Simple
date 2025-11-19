@@ -1,0 +1,44 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: lims-postgres
+    env: docker
+    plan: free
+    region: oregon
+    databases:
+      - name: lims_db
+        databaseName: lims_db
+        user: lims_user
+
+  # NestJS Backend API
+  - type: web
+    name: lims-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lims-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://lims-frontend.onrender.com
+      - key: DIAGNOSTIC_CENTER_NAME
+        value: Diagnostic Center
+      - key: BCRYPT_ROUNDS
+        value: 10
+      - key: THROTTLE_LIMIT
+        value: 100
+      - key: THROTTLE_AUTH_LIMIT
+        value: 5

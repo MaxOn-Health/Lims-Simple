@@ -1,0 +1,504 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import {
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { BloodSamplesService } from './blood-samples.service';
+import { BloodSample } from './entities/blood-sample.entity';
+import { BloodSampleAccess } from './entities/blood-sample-access.entity';
+import { BloodSampleStatus } from './constants/blood-sample-status.enum';
+import { Patient } from '../../patients/entities/patient.entity';
+import { User, UserRole } from '../../users/entities/user.entity';
+import { Assignment } from '../../assignments/entities/assignment.entity';
+import { AssignmentStatus } from '../../assignments/constants/assignment-status.enum';
+import { Test as TestEntity } from '../../tests/entities/test.entity';
+import { TestResult } from '../../results/entities/test-result.entity';
+import { SampleIdService } from './services/sample-id.service';
+import { PasscodeService } from './services/passcode.service';
+import { ResultValidationService } from '../../results/services/result-validation.service';
+import { AuditService } from '../../audit/audit.service';
+import { RegisterBloodSampleDto } from './dto/register-blood-sample.dto';
+import { AccessBloodSampleDto } from './dto/access-blood-sample.dto';
+import { UpdateBloodSampleStatusDto } from './dto/update-blood-sample-status.dto';
+import { SubmitBloodTestResultDto } from './dto/submit-blood-test-result.dto';
+import { Gender } from '../../patients/constants/gender.enum';
+import { TestCategory } from '../../tests/constants/test-category';
+import { TestFieldType } from '../../tests/constants/test-field-types';
+
+describe('BloodSamplesService', () => {
+  let service: BloodSamplesService;
+  let bloodSamplesRepository: Repository<BloodSample>;
+  let bloodSampleAccessRepository: Repository<BloodSampleAccess>;
+  let patientsRepository: Repository<Patient>;
+  let usersRepository: Repository<User>;
+  let assignmentsRepository: Repository<Assignment>;
+  let testsRepository: Repository<TestEntity>;
+  let testResultsRepository: Repository<TestResult>;
+  let sampleIdService: SampleIdService;
+  let passcodeService: PasscodeService;
+  let resultValidationService: ResultValidationService;
+  let auditService: AuditService;
+
+  const mockPatient: Patient = {
+    id: 'patient-1',
+    patientId: 'PAT-20241110-0001',
+    name: 'John Doe',
+    age: 30,
+    gender: Gender.MALE,
+    contactNumber: '+1234567890',
+    email: null,
+    employeeId: null,
+    companyName: null,
+    address: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    patientPackages: [],
+  };
+
+  const mockReceptionist: User = {
+    id: 'receptionist-1',
+    email: 'receptionist@lims.com',
+    passwordHash: 'hash',
+    fullName: 'Receptionist',
+    role: UserRole.RECEPTIONIST,
+    testAdminType: null,
+    isActive: true,
+    passkeyCredentialId: null,
+    passkeyPublicKey: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockLabTechnician: User = {
+    id: 'labtech-1',
+    email: 'labtech@lims.com',
+    passwordHash: 'hash',
+    fullName: 'Lab Technician',
+    role: UserRole.LAB_TECHNICIAN,
+    testAdminType: 'blood_test',
+    isActive: true,
+    passkeyCredentialId: null,
+    passkeyPublicKey: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockBloodTest: TestEntity = {
+    id: 'test-1',
+    name: 'Blood Test',
+    description: 'Complete blood test',
+    category: TestCategory.LAB,
+    adminRole: 'blood_test',
+    normalRangeMin: null,
+    normalRangeMax: null,
+    unit: null,
+    testFields: [
+      {
+        field_name: 'hemoglobin',
+        field_type: TestFieldType.NUMBER,
+        required: true,
+        options: null,
+      },
+    ],
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    packageTests: [],
+  };
+
+  const mockBloodSample: BloodSample = {
+    id: 'sample-1',
+    patientId: 'patient-1',
+    sampleId: 'BL-20241110-0001',
+    passcodeHash: 'hashed_passcode',
+    collectedAt: new Date(),
+    collectedBy: 'receptionist-1',
+    status: BloodSampleStatus.COLLECTED,
+    testedAt: null,
+    testedBy: null,
+    assignmentId: 'assignment-1',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    patient: mockPatient,
+    collectedByUser: mockReceptionist,
+    testedByUser: null,
+    assignment: null,
+  };
+
+  const mockAssignment: Assignment = {
+    id: 'assignment-1',
+    patientId: 'patient-1',
+    testId: 'test-1',
+    adminId: null,
+    status: AssignmentStatus.PENDING,
+    assignedAt: null,
+    startedAt: null,
+    completedAt: null,
+    assignedBy: 'receptionist-1',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    patient: mockPatient,
+    test: mockBloodTest,
+    admin: null,
+    assignedByUser: null,
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        BloodSamplesService,
+        {
+          provide: getRepositoryToken(BloodSample),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            createQueryBuilder: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(BloodSampleAccess),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Patient),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Assignment),
+          useValue: {
+            findOne: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(TestEntity),
+          useValue: {
+            createQueryBuilder: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(TestResult),
+          useValue: {
+            findOne: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: SampleIdService,
+          useValue: {
+            generateSampleId: jest.fn(),
+          },
+        },
+        {
+          provide: PasscodeService,
+          useValue: {
+            generatePasscode: jest.fn(),
+            hashPasscode: jest.fn(),
+            comparePasscode: jest.fn(),
+          },
+        },
+        {
+          provide: ResultValidationService,
+          useValue: {
+            validateResultValues: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            log: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<BloodSamplesService>(BloodSamplesService);
+    bloodSamplesRepository = module.get<Repository<BloodSample>>(getRepositoryToken(BloodSample));
+    bloodSampleAccessRepository = module.get<Repository<BloodSampleAccess>>(
+      getRepositoryToken(BloodSampleAccess),
+    );
+    patientsRepository = module.get<Repository<Patient>>(getRepositoryToken(Patient));
+    usersRepository = module.get<Repository<User>>(getRepositoryToken(User));
+    assignmentsRepository = module.get<Repository<Assignment>>(getRepositoryToken(Assignment));
+    testsRepository = module.get<Repository<TestEntity>>(getRepositoryToken(TestEntity));
+    testResultsRepository = module.get<Repository<TestResult>>(getRepositoryToken(TestResult));
+    sampleIdService = module.get<SampleIdService>(SampleIdService);
+    passcodeService = module.get<PasscodeService>(PasscodeService);
+    resultValidationService = module.get<ResultValidationService>(ResultValidationService);
+    auditService = module.get<AuditService>(AuditService);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('registerBloodSample', () => {
+    it('should register a blood sample successfully', async () => {
+      const dto: RegisterBloodSampleDto = { patientId: 'patient-1' };
+      const sampleId = 'BL-20241110-0001';
+      const plainPasscode = '123456';
+
+      jest.spyOn(patientsRepository, 'findOne').mockResolvedValue(mockPatient);
+      jest.spyOn(sampleIdService, 'generateSampleId').mockResolvedValue(sampleId);
+      jest.spyOn(passcodeService, 'generatePasscode').mockReturnValue(plainPasscode);
+      jest.spyOn(passcodeService, 'hashPasscode').mockResolvedValue('hashed_passcode');
+
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(mockBloodTest),
+      };
+      jest.spyOn(testsRepository, 'createQueryBuilder').mockReturnValue(mockQueryBuilder as any);
+
+      jest.spyOn(bloodSamplesRepository, 'create').mockReturnValue(mockBloodSample);
+      jest.spyOn(bloodSamplesRepository, 'save').mockResolvedValue(mockBloodSample);
+      jest.spyOn(assignmentsRepository, 'create').mockReturnValue(mockAssignment);
+      jest.spyOn(assignmentsRepository, 'save').mockResolvedValue(mockAssignment);
+
+      const result = await service.registerBloodSample(dto, 'receptionist-1');
+
+      expect(result).toBeDefined();
+      expect(result.sampleId).toBe(sampleId);
+      expect(result.passcode).toBe(plainPasscode);
+      expect(result.patientId).toBe('patient-1');
+      expect(auditService.log).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if patient not found', async () => {
+      const dto: RegisterBloodSampleDto = { patientId: 'non-existent' };
+      jest.spyOn(patientsRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(service.registerBloodSample(dto, 'receptionist-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw NotFoundException if blood test not found', async () => {
+      const dto: RegisterBloodSampleDto = { patientId: 'patient-1' };
+      jest.spyOn(patientsRepository, 'findOne').mockResolvedValue(mockPatient);
+      jest.spyOn(sampleIdService, 'generateSampleId').mockResolvedValue('BL-20241110-0001');
+      jest.spyOn(passcodeService, 'generatePasscode').mockReturnValue('123456');
+      jest.spyOn(passcodeService, 'hashPasscode').mockResolvedValue('hashed_passcode');
+
+      const mockQueryBuilder = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      };
+      jest.spyOn(testsRepository, 'createQueryBuilder').mockReturnValue(mockQueryBuilder as any);
+
+      await expect(service.registerBloodSample(dto, 'receptionist-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('accessBloodSample', () => {
+    it('should access blood sample with valid passcode', async () => {
+      const dto: AccessBloodSampleDto = {
+        sampleId: 'BL-20241110-0001',
+        passcode: '123456',
+      };
+
+      jest.spyOn(bloodSamplesRepository, 'findOne').mockResolvedValue(mockBloodSample);
+      jest.spyOn(passcodeService, 'comparePasscode').mockResolvedValue(true);
+      jest.spyOn(usersRepository, 'findOne').mockResolvedValue(mockLabTechnician);
+      jest.spyOn(assignmentsRepository, 'findOne').mockResolvedValue(mockAssignment);
+      jest.spyOn(assignmentsRepository, 'save').mockResolvedValue(mockAssignment);
+      jest.spyOn(bloodSamplesRepository, 'save').mockResolvedValue(mockBloodSample);
+      jest.spyOn(bloodSampleAccessRepository, 'create').mockReturnValue({
+        id: 'access-1',
+        sampleId: 'sample-1',
+        accessedBy: 'labtech-1',
+        accessedAt: new Date(),
+      } as any);
+      jest.spyOn(bloodSampleAccessRepository, 'save').mockResolvedValue({
+        id: 'access-1',
+        sampleId: 'sample-1',
+        accessedBy: 'labtech-1',
+        accessedAt: new Date(),
+      } as any);
+
+      const result = await service.accessBloodSample(dto, 'labtech-1');
+
+      expect(result).toBeDefined();
+      expect(result.sampleId).toBe('BL-20241110-0001');
+      expect(auditService.log).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if sample not found', async () => {
+      const dto: AccessBloodSampleDto = {
+        sampleId: 'BL-20241110-9999',
+        passcode: '123456',
+      };
+
+      jest.spyOn(bloodSamplesRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(service.accessBloodSample(dto, 'labtech-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw ForbiddenException if passcode is invalid', async () => {
+      const dto: AccessBloodSampleDto = {
+        sampleId: 'BL-20241110-0001',
+        passcode: 'wrong',
+      };
+
+      jest.spyOn(bloodSamplesRepository, 'findOne').mockResolvedValue(mockBloodSample);
+      jest.spyOn(passcodeService, 'comparePasscode').mockResolvedValue(false);
+
+      await expect(service.accessBloodSample(dto, 'labtech-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw BadRequestException if sample status is not COLLECTED or IN_LAB', async () => {
+      const dto: AccessBloodSampleDto = {
+        sampleId: 'BL-20241110-0001',
+        passcode: '123456',
+      };
+
+      const testedSample = { ...mockBloodSample, status: BloodSampleStatus.TESTED };
+      jest.spyOn(bloodSamplesRepository, 'findOne').mockResolvedValue(testedSample);
+      jest.spyOn(passcodeService, 'comparePasscode').mockResolvedValue(true);
+
+      await expect(service.accessBloodSample(dto, 'labtech-1')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('updateStatus', () => {
+    it('should update sample status successfully', async () => {
+      const dto: UpdateBloodSampleStatusDto = { status: BloodSampleStatus.IN_LAB };
+
+      jest.spyOn(bloodSamplesRepository, 'findOne').mockResolvedValue(mockBloodSample);
+      jest.spyOn(bloodSamplesRepository, 'save').mockResolvedValue({
+        ...mockBloodSample,
+        status: BloodSampleStatus.IN_LAB,
+      });
+
+      const result = await service.updateStatus('sample-1', dto, 'labtech-1');
+
+      expect(result).toBeDefined();
+      expect(result.status).toBe(BloodSampleStatus.IN_LAB);
+      expect(auditService.log).toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException for invalid status transition', async () => {
+      const dto: UpdateBloodSampleStatusDto = { status: BloodSampleStatus.COMPLETED };
+
+      jest.spyOn(bloodSamplesRepository, 'findOne').mockResolvedValue(mockBloodSample);
+
+      await expect(service.updateStatus('sample-1', dto, 'labtech-1')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('submitBloodTestResult', () => {
+    it('should submit blood test result successfully', async () => {
+      const dto: SubmitBloodTestResultDto = {
+        resultValues: { hemoglobin: 14.5 },
+        notes: 'Test notes',
+      };
+
+      const inLabSample = {
+        ...mockBloodSample,
+        status: BloodSampleStatus.IN_LAB,
+        assignment: mockAssignment,
+      };
+
+      const completedAssignment = {
+        ...mockAssignment,
+        status: AssignmentStatus.COMPLETED,
+        adminId: 'labtech-1',
+      };
+
+      jest.spyOn(bloodSamplesRepository, 'findOne').mockResolvedValue(inLabSample as any);
+      jest.spyOn(bloodSampleAccessRepository, 'findOne').mockResolvedValue({
+        id: 'access-1',
+        sampleId: 'sample-1',
+        accessedBy: 'labtech-1',
+        accessedAt: new Date(),
+      } as any);
+      jest.spyOn(assignmentsRepository, 'findOne').mockResolvedValue(completedAssignment);
+      jest.spyOn(testResultsRepository, 'findOne').mockResolvedValue(null);
+      jest.spyOn(resultValidationService, 'validateResultValues').mockReturnValue({
+        isValid: true,
+        errors: [],
+        warnings: [],
+      });
+      jest.spyOn(testResultsRepository, 'create').mockReturnValue({
+        id: 'result-1',
+        assignmentId: 'assignment-1',
+        resultValues: dto.resultValues,
+        notes: dto.notes,
+        enteredBy: 'labtech-1',
+        enteredAt: new Date(),
+        isVerified: false,
+        verifiedBy: null,
+        verifiedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+      jest.spyOn(testResultsRepository, 'save').mockResolvedValue({
+        id: 'result-1',
+        assignmentId: 'assignment-1',
+        resultValues: dto.resultValues,
+        notes: dto.notes,
+      } as any);
+      jest.spyOn(bloodSamplesRepository, 'save').mockResolvedValue({
+        ...inLabSample,
+        status: BloodSampleStatus.TESTED,
+        testedAt: new Date(),
+        testedBy: 'labtech-1',
+      } as any);
+      jest.spyOn(assignmentsRepository, 'save').mockResolvedValue({
+        ...completedAssignment,
+        status: AssignmentStatus.SUBMITTED,
+      });
+
+      const result = await service.submitBloodTestResult('sample-1', dto, 'labtech-1');
+
+      expect(result).toBeDefined();
+      expect(result.resultValues).toEqual(dto.resultValues);
+      expect(auditService.log).toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if user has not accessed the sample', async () => {
+      const dto: SubmitBloodTestResultDto = {
+        resultValues: { hemoglobin: 14.5 },
+      };
+
+      jest.spyOn(bloodSamplesRepository, 'findOne').mockResolvedValue(mockBloodSample as any);
+      jest.spyOn(bloodSampleAccessRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(
+        service.submitBloodTestResult('sample-1', dto, 'labtech-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+});
+

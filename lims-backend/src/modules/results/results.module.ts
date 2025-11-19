@@ -1,0 +1,21 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { TestResult } from './entities/test-result.entity';
+import { ResultsService } from './results.service';
+import { ResultsController } from './results.controller';
+import { ResultValidationService } from './services/result-validation.service';
+import { Assignment } from '../assignments/entities/assignment.entity';
+import { User } from '../users/entities/user.entity';
+import { AuditModule } from '../audit/audit.module';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([TestResult, Assignment, User]),
+    AuditModule,
+  ],
+  providers: [ResultsService, ResultValidationService],
+  controllers: [ResultsController],
+  exports: [ResultsService, ResultValidationService],
+})
+export class ResultsModule {}
+

@@ -1,0 +1,2 @@
+export { LabTechDashboard } from './LabTechDashboard';
+

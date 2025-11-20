@@ -257,14 +257,16 @@ export const AssignmentView: React.FC<AssignmentViewProps> = ({
           )}
         </HasRole>
         <HasRole allowedRoles={[UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN]}>
-          {assignment.status === AssignmentStatus.COMPLETED && !result && (
-            <Link href={`/results/entry/${assignment.id}`}>
-              <Button variant="primary">
-                <FileText className="mr-2 h-4 w-4" />
-                Submit Result
-              </Button>
-            </Link>
-          )}
+          {(assignment.status === AssignmentStatus.IN_PROGRESS ||
+            assignment.status === AssignmentStatus.ASSIGNED) &&
+            !result && (
+              <Link href={`/results/entry/${assignment.id}`}>
+                <Button variant="primary">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Submit Result
+                </Button>
+              </Link>
+            )}
         </HasRole>
         {result && (
           <Link href={`/results/${result.id}`}>

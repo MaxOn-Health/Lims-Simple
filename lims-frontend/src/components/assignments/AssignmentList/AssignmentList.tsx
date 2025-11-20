@@ -27,10 +27,12 @@ import { Plus, ClipboardList } from 'lucide-react';
 import { Skeleton } from '@/components/common/Skeleton';
 import { ReassignModal } from '../ReassignModal/ReassignModal';
 import { UpdateStatusModal } from '../UpdateStatusModal/UpdateStatusModal';
+import { useAuthStore } from '@/store/auth.store';
 
 export const AssignmentList: React.FC = () => {
   const router = useRouter();
   const { addToast } = useUIStore();
+  const { user } = useAuthStore();
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [allAssignments, setAllAssignments] = useState<Assignment[]>([]);
@@ -113,22 +115,31 @@ export const AssignmentList: React.FC = () => {
     setError(null);
 
     try {
-      // Try to use getAllAssignments endpoint
-      try {
-        const data = await assignmentsService.getAllAssignments({
-          status: statusFilter,
-          patientId: patientFilter,
-          adminId: adminFilter,
-          testId: testFilter,
-        });
+      // Check if user is a technician (TEST_TECHNICIAN or LAB_TECHNICIAN)
+      const isTechnician = user?.role === UserRole.TEST_TECHNICIAN || user?.role === UserRole.LAB_TECHNICIAN;
+      
+      if (isTechnician) {
+        // Use my-assignments endpoint for technicians
+        const data = await assignmentsService.getMyAssignments(statusFilter);
         setAllAssignments(data);
-      } catch (err: any) {
-        // If endpoint doesn't exist (404), fetch from multiple sources
-        if (err?.response?.status === 404) {
-          // For now, set empty array - will be populated when backend endpoint is added
-          setAllAssignments([]);
-        } else {
-          throw err;
+      } else {
+        // Use getAllAssignments for admins/receptionists
+        try {
+          const data = await assignmentsService.getAllAssignments({
+            status: statusFilter,
+            patientId: patientFilter,
+            adminId: adminFilter,
+            testId: testFilter,
+          });
+          setAllAssignments(data);
+        } catch (err: any) {
+          // If endpoint doesn't exist (404), fetch from multiple sources
+          if (err?.response?.status === 404) {
+            // For now, set empty array - will be populated when backend endpoint is added
+            setAllAssignments([]);
+          } else {
+            throw err;
+          }
         }
       }
     } catch (err) {
@@ -145,24 +156,39 @@ export const AssignmentList: React.FC = () => {
 
   const fetchFilterData = async () => {
     try {
-      // Fetch patients for filter
-      const patientsData = await patientsService.getPatients({ limit: 100 });
-      setPatients(patientsData.data);
+      // Check if user is a technician - technicians don't need all filter data
+      const isTechnician = user?.role === UserRole.TEST_TECHNICIAN || user?.role === UserRole.LAB_TECHNICIAN;
+      
+      // Fetch patients for filter (if not technician, as technicians only see their own assignments)
+      if (!isTechnician) {
+        try {
+          const patientsData = await patientsService.getPatients({ limit: 100 });
+          setPatients(patientsData.data);
+        } catch (err) {
+          // Silently fail - patients filter is optional
+        }
+      }
 
       // Fetch tests for filter
-      const testsData = await testsService.getTests({ isActive: true });
-      setTests(testsData);
-
-      // Fetch admins for filter (TEST_TECHNICIAN and LAB_TECHNICIAN roles)
       try {
-        const adminsData = await usersService.getUsers({ limit: 100, role: UserRole.TEST_TECHNICIAN });
-        const labTechsData = await usersService.getUsers({
-          limit: 100,
-          role: UserRole.LAB_TECHNICIAN,
-        });
-        setAdmins([...adminsData.data, ...labTechsData.data]);
+        const testsData = await testsService.getTests({ isActive: true });
+        setTests(testsData);
       } catch (err) {
-        // Silently fail - admin filter is optional
+        // Silently fail - tests filter is optional
+      }
+
+      // Fetch admins for filter (TEST_TECHNICIAN and LAB_TECHNICIAN roles) - only for non-technicians
+      if (!isTechnician) {
+        try {
+          const adminsData = await usersService.getUsers({ limit: 100, role: UserRole.TEST_TECHNICIAN });
+          const labTechsData = await usersService.getUsers({
+            limit: 100,
+            role: UserRole.LAB_TECHNICIAN,
+          });
+          setAdmins([...adminsData.data, ...labTechsData.data]);
+        } catch (err) {
+          // Silently fail - admin filter is optional
+        }
       }
     } catch (err) {
       // Silently fail - filter data is optional
@@ -171,11 +197,11 @@ export const AssignmentList: React.FC = () => {
 
   useEffect(() => {
     fetchFilterData();
-  }, []);
+  }, [user?.role]);
 
   useEffect(() => {
     fetchAssignments();
-  }, [statusFilter, patientFilter, testFilter, adminFilter]);
+  }, [statusFilter, patientFilter, testFilter, adminFilter, user?.role]);
 
   const handlePageChange = (page: number) => {
     setPagination((prev) => ({ ...prev, page }));

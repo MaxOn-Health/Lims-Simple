@@ -60,7 +60,7 @@ export function getValidStatusTransitions(
   const validTransitions: Record<AssignmentStatus, AssignmentStatus[]> = {
     [AssignmentStatus.PENDING]: [AssignmentStatus.ASSIGNED],
     [AssignmentStatus.ASSIGNED]: [AssignmentStatus.IN_PROGRESS],
-    [AssignmentStatus.IN_PROGRESS]: [AssignmentStatus.COMPLETED],
+    [AssignmentStatus.IN_PROGRESS]: [],
     [AssignmentStatus.COMPLETED]: [AssignmentStatus.SUBMITTED],
     [AssignmentStatus.SUBMITTED]: [], // No transitions from SUBMITTED
   };

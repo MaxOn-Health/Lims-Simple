@@ -101,7 +101,7 @@ describe('ResultsService', () => {
     patientId: 'patient-1',
     testId: 'test-1',
     adminId: 'admin-1',
-    status: AssignmentStatus.COMPLETED,
+    status: AssignmentStatus.IN_PROGRESS,
     assignedAt: new Date(),
     startedAt: new Date(),
     completedAt: new Date(),
@@ -237,9 +237,9 @@ describe('ResultsService', () => {
       await expect(service.submitResult(dto, 'different-admin')).rejects.toThrow(ForbiddenException);
     });
 
-    it('should throw BadRequestException if assignment status is not COMPLETED', async () => {
-      const incompleteAssignment = { ...mockAssignment, status: AssignmentStatus.IN_PROGRESS };
-      jest.spyOn(assignmentsRepository, 'findOne').mockResolvedValue(incompleteAssignment);
+    it('should throw BadRequestException if assignment status is not IN_PROGRESS or ASSIGNED', async () => {
+      const invalidStatusAssignment = { ...mockAssignment, status: AssignmentStatus.SUBMITTED };
+      jest.spyOn(assignmentsRepository, 'findOne').mockResolvedValue(invalidStatusAssignment);
 
       const dto: SubmitResultDto = {
         assignmentId: 'assignment-1',
@@ -285,7 +285,7 @@ describe('ResultsService', () => {
       };
 
       // Create a fresh copy of the assignment to avoid mutation
-      const freshAssignment = { ...mockAssignment, status: AssignmentStatus.COMPLETED };
+      const freshAssignment = { ...mockAssignment, status: AssignmentStatus.IN_PROGRESS };
       jest.spyOn(assignmentsRepository, 'findOne').mockResolvedValue(freshAssignment);
       jest.spyOn(testResultsRepository, 'findOne')
         .mockResolvedValueOnce(null) // First call: check if result exists

@@ -42,7 +42,10 @@ export class ResultsController {
     description: 'Result submitted successfully',
     type: ResultResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Validation error or assignment not in COMPLETED status' })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation error or assignment not in a valid status (IN_PROGRESS or ASSIGNED)',
+  })
   @ApiResponse({ status: 403, description: 'Forbidden - TEST_TECHNICIAN or LAB_TECHNICIAN only, or assignment does not belong to user' })
   @ApiResponse({ status: 404, description: 'Assignment not found' })
   async submitResult(

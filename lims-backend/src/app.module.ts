@@ -63,16 +63,16 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
         const dbConfig = configService.get('database');
         const baseConfig = {
           type: 'postgres' as const,
-          synchronize: false,
-          logging: configService.get<string>('app.nodeEnv') === 'development',
-          entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
-          migrationsRun: false,
-          migrationsTableName: 'migrations',
-          extra: {
-            max: 10,
-            connectionTimeoutMillis: 2000,
-          },
+        synchronize: false,
+        logging: configService.get<string>('app.nodeEnv') === 'development',
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
+        migrationsRun: false,
+        migrationsTableName: 'migrations',
+        extra: {
+          max: 10,
+          connectionTimeoutMillis: 2000,
+        },
         };
 
         // If DATABASE_URL is provided, use url; otherwise use individual properties

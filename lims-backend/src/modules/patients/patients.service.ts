@@ -91,27 +91,36 @@ export class PatientsService {
       }
     }
 
-    // Validate package exists and is active
-    const pkg = await this.packagesRepository.findOne({
-      where: { id: createPatientDto.packageId },
-    });
-
-    if (!pkg) {
-      throw new NotFoundException('Package not found');
+    // Validate: Either packageId OR addonTestIds (with at least one test) must be provided
+    const testIds = createPatientDto.addonTestIds || [];
+    if (!createPatientDto.packageId && (!testIds || testIds.length === 0)) {
+      throw new BadRequestException('Either a package must be selected or at least one test must be selected');
     }
 
-    if (!pkg.isActive) {
-      throw new BadRequestException('Package is not active');
-    }
-
-    // Validate addon tests exist and are active
-    if (createPatientDto.addonTestIds && createPatientDto.addonTestIds.length > 0) {
-      const addonTests = await this.testsRepository.find({
-        where: createPatientDto.addonTestIds.map((id) => ({ id, isActive: true })),
+    // Validate package exists and is active (only if packageId is provided)
+    let pkg = null;
+    if (createPatientDto.packageId) {
+      pkg = await this.packagesRepository.findOne({
+        where: { id: createPatientDto.packageId },
       });
 
-      if (addonTests.length !== createPatientDto.addonTestIds.length) {
-        throw new NotFoundException('One or more addon tests not found or not active');
+      if (!pkg) {
+        throw new NotFoundException('Package not found');
+      }
+
+      if (!pkg.isActive) {
+        throw new BadRequestException('Package is not active');
+      }
+    }
+
+    // Validate tests exist and are active
+    if (testIds && testIds.length > 0) {
+      const tests = await this.testsRepository.find({
+        where: testIds.map((id) => ({ id, isActive: true })),
+      });
+
+      if (tests.length !== testIds.length) {
+        throw new NotFoundException('One or more tests not found or not active');
       }
     }
 
@@ -127,8 +136,8 @@ export class PatientsService {
 
     // Calculate total price
     const totalPrice = await this.priceCalculationService.calculateTotalPrice(
-      createPatientDto.packageId,
-      createPatientDto.addonTestIds || [],
+      createPatientDto.packageId || null,
+      testIds,
     );
 
     // Create patient
@@ -152,11 +161,11 @@ export class PatientsService {
       await this.projectsService.updateStatistics(project.id);
     }
 
-    // Create patient package
+    // Create patient package (packageId can be null if only tests are selected)
     const patientPackage = this.patientPackagesRepository.create({
       patientId: savedPatient.id,
-      packageId: createPatientDto.packageId,
-      addonTestIds: createPatientDto.addonTestIds || [],
+      packageId: createPatientDto.packageId || null,
+      addonTestIds: testIds,
       totalPrice,
       paymentStatus: PaymentStatus.PENDING,
       paymentAmount: 0,
@@ -187,7 +196,8 @@ export class PatientsService {
       savedPatient.id,
       {
         patientId: savedPatient.patientId,
-        packageId: createPatientDto.packageId,
+        packageId: createPatientDto.packageId || null,
+        testIds: testIds.length > 0 ? testIds : null,
         totalPrice,
       },
     );
@@ -356,13 +366,16 @@ export class PatientsService {
       };
     }
 
-    // Get all tests from package
-    const packageTests = await this.packageTestsRepository.find({
-      where: { packageId: patientPackage.packageId },
-      relations: ['test'],
-    });
-
-    const packageTestIds = packageTests.map((pt) => pt.testId);
+    // Get all tests from package (if package exists) and addon tests
+    const packageTestIds: string[] = [];
+    if (patientPackage.packageId) {
+      const packageTests = await this.packageTestsRepository.find({
+        where: { packageId: patientPackage.packageId },
+        relations: ['test'],
+      });
+      packageTestIds.push(...packageTests.map((pt) => pt.testId));
+    }
+    
     const addonTestIds = patientPackage.addonTestIds || [];
     const allTestIds = [...packageTestIds, ...addonTestIds];
 
@@ -587,7 +600,7 @@ export class PatientsService {
       dto.patientPackages = patient.patientPackages.map((pp) => ({
         id: pp.id,
         packageId: pp.packageId,
-        packageName: (pp.package as any)?.name || '',
+        packageName: pp.package?.name || null,
         addonTestIds: pp.addonTestIds,
         totalPrice: parseFloat(pp.totalPrice.toString()),
         paymentStatus: pp.paymentStatus,

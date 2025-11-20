@@ -25,13 +25,13 @@ export const updateAssignmentStatusSchema = z
     (data) => {
       if (!data.currentStatus) return true;
 
-      const validTransitions: Record<AssignmentStatus, AssignmentStatus[]> = {
-        [AssignmentStatus.PENDING]: [AssignmentStatus.ASSIGNED],
-        [AssignmentStatus.ASSIGNED]: [AssignmentStatus.IN_PROGRESS],
-        [AssignmentStatus.IN_PROGRESS]: [AssignmentStatus.COMPLETED],
-        [AssignmentStatus.COMPLETED]: [AssignmentStatus.SUBMITTED],
-        [AssignmentStatus.SUBMITTED]: [], // No transitions from SUBMITTED
-      };
+const validTransitions: Record<AssignmentStatus, AssignmentStatus[]> = {
+  [AssignmentStatus.PENDING]: [AssignmentStatus.ASSIGNED],
+  [AssignmentStatus.ASSIGNED]: [AssignmentStatus.IN_PROGRESS],
+  [AssignmentStatus.IN_PROGRESS]: [],
+  [AssignmentStatus.COMPLETED]: [AssignmentStatus.SUBMITTED],
+  [AssignmentStatus.SUBMITTED]: [], // No transitions from SUBMITTED
+};
 
       const allowed = validTransitions[data.currentStatus] || [];
       return allowed.includes(data.status);

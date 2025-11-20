@@ -378,9 +378,12 @@ export class BloodSamplesService {
     }
 
     // Validate assignment status
-    if (assignment.status !== AssignmentStatus.COMPLETED) {
+    if (
+      assignment.status !== AssignmentStatus.IN_PROGRESS &&
+      assignment.status !== AssignmentStatus.ASSIGNED
+    ) {
       throw new BadRequestException(
-        `Assignment status must be COMPLETED to submit results. Current status: ${assignment.status}`,
+        `Cannot submit results. Assignment must be IN_PROGRESS or ASSIGNED. Current status: ${assignment.status}`,
       );
     }
 

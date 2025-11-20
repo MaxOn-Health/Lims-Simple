@@ -45,10 +45,13 @@ export class ResultsService {
       throw new ForbiddenException('You can only submit results for your own assignments');
     }
 
-    // Validate assignment status is COMPLETED
-    if (assignment.status !== AssignmentStatus.COMPLETED) {
+    // Validate assignment status allows result submission (IN_PROGRESS or ASSIGNED)
+    if (
+      assignment.status !== AssignmentStatus.IN_PROGRESS &&
+      assignment.status !== AssignmentStatus.ASSIGNED
+    ) {
       throw new BadRequestException(
-        `Assignment status must be COMPLETED to submit results. Current status: ${assignment.status}`,
+        `Cannot submit results. Assignment must be IN_PROGRESS or ASSIGNED. Current status: ${assignment.status}`,
       );
     }
 

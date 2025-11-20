@@ -12,8 +12,8 @@ export enum PaymentStatus {
 
 export interface PatientPackage {
   id: string;
-  packageId: string;
-  packageName: string;
+  packageId: string | null;
+  packageName?: string | null;
   addonTestIds: string[];
   totalPrice: number;
   paymentStatus: PaymentStatus;
@@ -50,7 +50,7 @@ export interface CreatePatientRequest {
   companyName?: string;
   address?: string;
   projectId?: string;
-  packageId: string;
+  packageId?: string;
   addonTestIds?: string[];
 }
 

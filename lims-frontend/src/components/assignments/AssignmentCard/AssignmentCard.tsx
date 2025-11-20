@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator';
 import { AssignmentStatusBadge } from '../AssignmentStatusBadge/AssignmentStatusBadge';
 import { formatAssignmentDateShort } from '@/utils/assignment-helpers';
-import { Eye, Play, CheckCircle, FileText, UserCog, User } from 'lucide-react';
+import { Eye, Play, FileText, UserCog, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface AssignmentCardProps {
@@ -29,14 +29,6 @@ export const AssignmentCard: React.FC<AssignmentCardProps> = ({
   const handleStart = () => {
     if (onStart) {
       onStart(assignment.id);
-    } else if (onUpdateStatus) {
-      onUpdateStatus(assignment.id);
-    }
-  };
-
-  const handleComplete = () => {
-    if (onComplete) {
-      onComplete(assignment.id);
     } else if (onUpdateStatus) {
       onUpdateStatus(assignment.id);
     }
@@ -143,27 +135,25 @@ export const AssignmentCard: React.FC<AssignmentCardProps> = ({
               <span className="truncate">Start</span>
             </Button>
           )}
-          {assignment.status === AssignmentStatus.IN_PROGRESS && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleComplete}
-              className="flex-1 min-w-[70px] gap-1.5 text-xs"
-            >
-              <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Complete</span>
-            </Button>
-          )}
-          {assignment.status === AssignmentStatus.COMPLETED && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleSubmitResult}
-              className="flex-1 min-w-[100px] gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white"
-            >
-              <FileText className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Enter Results</span>
-            </Button>
+          {(assignment.status === AssignmentStatus.ASSIGNED ||
+            assignment.status === AssignmentStatus.IN_PROGRESS) && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSubmitResult}
+                className="flex-1 min-w-[110px] gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white"
+              >
+                <FileText className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Enter Results</span>
+              </Button>
+            )}
+          {assignment.status === AssignmentStatus.SUBMITTED && (
+            <Link href={`/assignments/${assignment.id}`} className="flex-1 min-w-[90px]">
+              <Button variant="outline" size="sm" fullWidth className="gap-1.5 text-xs">
+                <Eye className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">View Result</span>
+              </Button>
+            </Link>
           )}
         </div>
       </CardFooter>

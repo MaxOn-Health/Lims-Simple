@@ -15,40 +15,44 @@ export class PriceCalculationService {
 
   /**
    * Calculate total price for a patient package
-   * Total = Package price + Sum of addon test prices
+   * Total = Package price (if provided) + Sum of test prices (currently 0 as tests don't have prices)
    */
-  async calculateTotalPrice(packageId: string, addonTestIds: string[] = []): Promise<number> {
-    // Get package price
-    const pkg = await this.packagesRepository.findOne({
-      where: { id: packageId },
-    });
+  async calculateTotalPrice(packageId: string | null | undefined, testIds: string[] = []): Promise<number> {
+    let totalPrice = 0;
 
-    if (!pkg) {
-      throw new NotFoundException('Package not found');
-    }
-
-    if (!pkg.isActive) {
-      throw new NotFoundException('Package is not active');
-    }
-
-    let totalPrice = parseFloat(pkg.price.toString());
-
-    // Add addon test prices
-    if (addonTestIds && addonTestIds.length > 0) {
-      const addonTests = await this.testsRepository.find({
-        where: addonTestIds.map((id) => ({ id, isActive: true })),
+    // Get package price if packageId is provided
+    if (packageId) {
+      const pkg = await this.packagesRepository.findOne({
+        where: { id: packageId },
       });
 
-      if (addonTests.length !== addonTestIds.length) {
-        throw new NotFoundException('One or more addon tests not found or not active');
+      if (!pkg) {
+        throw new NotFoundException('Package not found');
+      }
+
+      if (!pkg.isActive) {
+        throw new NotFoundException('Package is not active');
+      }
+
+      totalPrice = parseFloat(pkg.price.toString());
+    }
+
+    // Add test prices (currently 0 as tests don't have individual prices in schema)
+    if (testIds && testIds.length > 0) {
+      const tests = await this.testsRepository.find({
+        where: testIds.map((id) => ({ id, isActive: true })),
+      });
+
+      if (tests.length !== testIds.length) {
+        throw new NotFoundException('One or more tests not found or not active');
       }
 
       // Note: Tests don't have a price field in the schema
-      // For now, we'll use 0 for addon tests
+      // For now, we'll use 0 for individual test prices
       // In a real system, you might want to add a price field to tests table
       // or use a pricing table
-      const addonPrice = 0; // Placeholder - tests don't have prices in current schema
-      totalPrice += addonPrice;
+      const testPrice = 0; // Placeholder - tests don't have prices in current schema
+      totalPrice += testPrice;
     }
 
     return totalPrice;

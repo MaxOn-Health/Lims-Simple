@@ -56,8 +56,8 @@ export class PatientsController {
   }
 
   @Get()
-  @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN, UserRole.DOCTOR)
-  @ApiOperation({ summary: 'Get all patients with pagination and filters (RECEPTIONIST, SUPER_ADMIN, DOCTOR)' })
+  @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN)
+  @ApiOperation({ summary: 'Get all patients with pagination and filters (RECEPTIONIST, SUPER_ADMIN, DOCTOR, TEST_TECHNICIAN, LAB_TECHNICIAN)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })

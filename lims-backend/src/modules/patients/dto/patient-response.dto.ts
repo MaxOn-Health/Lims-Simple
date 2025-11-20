@@ -6,11 +6,11 @@ export class PatientPackageResponseDto {
   @ApiProperty({ description: 'Patient package ID', example: 'uuid' })
   id: string;
 
-  @ApiProperty({ description: 'Package ID', example: 'uuid' })
-  packageId: string;
+  @ApiPropertyOptional({ description: 'Package ID (null if only individual tests selected)', example: 'uuid' })
+  packageId: string | null;
 
-  @ApiProperty({ description: 'Package name', example: 'Basic Health Package' })
-  packageName: string;
+  @ApiPropertyOptional({ description: 'Package name (null if only individual tests selected)', example: 'Basic Health Package' })
+  packageName: string | null;
 
   @ApiProperty({ type: [String], description: 'Addon test IDs', example: ['uuid1', 'uuid2'] })
   addonTestIds: string[];

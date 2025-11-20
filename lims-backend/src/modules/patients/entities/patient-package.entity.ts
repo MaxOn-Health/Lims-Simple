@@ -22,9 +22,9 @@ export class PatientPackage {
   @Index()
   patientId: string;
 
-  @Column({ type: 'uuid', name: 'package_id' })
+  @Column({ type: 'uuid', name: 'package_id', nullable: true })
   @Index()
-  packageId: string;
+  packageId: string | null;
 
   @Column({ type: 'jsonb', default: '[]', name: 'addon_test_ids' })
   addonTestIds: string[];
@@ -57,9 +57,9 @@ export class PatientPackage {
   @JoinColumn({ name: 'patient_id' })
   patient: Patient;
 
-  @ManyToOne(() => Package, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => Package, { onDelete: 'RESTRICT', nullable: true })
   @JoinColumn({ name: 'package_id' })
-  package: Package;
+  package: Package | null;
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'registered_by' })

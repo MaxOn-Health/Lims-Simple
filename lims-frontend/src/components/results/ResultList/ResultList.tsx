@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import { resultsService } from '@/services/api/results.service';
 import { patientsService } from '@/services/api/patients.service';
 import { testsService } from '@/services/api/tests.service';
+import { assignmentsService } from '@/services/api/assignments.service';
 import { Result, ResultStatus } from '@/types/result.types';
 import { Patient } from '@/types/patient.types';
 import { Test } from '@/types/test.types';
+import { UserRole } from '@/types/user.types';
 import { ResultTable } from '../ResultTable/ResultTable';
 import { ResultFilters } from '../ResultFilters/ResultFilters';
 import { ResultSearch } from '../ResultSearch/ResultSearch';
@@ -16,6 +18,7 @@ import { EmptyState } from '@/components/common/EmptyState/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState/ErrorState';
 import { useDebounce } from '@/hooks/useDebounce/useDebounce';
 import { useUIStore } from '@/store/ui.store';
+import { useAuthStore } from '@/store/auth.store';
 import { getErrorMessage } from '@/utils/error-handler';
 import { ApiError } from '@/types/api.types';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -27,6 +30,7 @@ import { calculateResultStatus } from '@/utils/result-helpers';
 export const ResultList: React.FC = () => {
   const router = useRouter();
   const { addToast } = useUIStore();
+  const { user } = useAuthStore();
 
   const [allResults, setAllResults] = useState<Result[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -52,39 +56,79 @@ export const ResultList: React.FC = () => {
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [selectedResult, setSelectedResult] = useState<Result | null>(null);
 
-  // Fetch all results by fetching from all patients
+  // Fetch all results by fetching from all patients or assignments based on user role
   const fetchAllResults = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Fetch all patients (backend max limit is 100)
-      const patientsResponse = await patientsService.getPatients({ limit: 100 });
-      const allPatients = patientsResponse.data;
+      const isTechnician = user?.role === UserRole.TEST_TECHNICIAN || user?.role === UserRole.LAB_TECHNICIAN;
 
-      // Fetch results for each patient
-      const resultsPromises = allPatients.map((patient) =>
-        resultsService.getResultsByPatient(patient.id).catch(() => [])
-      );
-      const resultsArrays = await Promise.all(resultsPromises);
-      const allResultsData = resultsArrays.flat();
+      if (isTechnician) {
+        // For technicians: Fetch their assignments first, then results
+        const myAssignments = await assignmentsService.getMyAssignments();
 
-      // Fetch test details for each result
-      const resultsWithTests = await Promise.all(
-        allResultsData.map(async (result) => {
-          if (result.test?.id) {
-            try {
-              const testDetails = await testsService.getTestById(result.test.id);
-              return { ...result, test: testDetails };
-            } catch {
-              return result;
-            }
+        // Fetch results for each assignment
+        const resultsPromises = myAssignments.map((assignment) =>
+          resultsService.getResultByAssignment(assignment.id).catch(() => null)
+        );
+        const resultsArray = await Promise.all(resultsPromises);
+        const allResultsData = resultsArray.filter((result): result is Result => result !== null);
+
+        // Extract unique patients from results for filter
+        const uniquePatients = new Map<string, Patient>();
+        allResultsData.forEach((result) => {
+          if (result.patient && !uniquePatients.has(result.patient.id)) {
+            uniquePatients.set(result.patient.id, result.patient);
           }
-          return result;
-        })
-      );
+        });
+        setPatients(Array.from(uniquePatients.values()));
 
-      setAllResults(resultsWithTests);
+        // Fetch test details for each result
+        const resultsWithTests = await Promise.all(
+          allResultsData.map(async (result) => {
+            if (result.test?.id) {
+              try {
+                const testDetails = await testsService.getTestById(result.test.id);
+                return { ...result, test: testDetails };
+              } catch {
+                return result;
+              }
+            }
+            return result;
+          })
+        );
+
+        setAllResults(resultsWithTests);
+      } else {
+        // For admins/receptionists: Keep current approach
+        const patientsResponse = await patientsService.getPatients({ limit: 100 });
+        const allPatients = patientsResponse.data;
+
+        // Fetch results for each patient
+        const resultsPromises = allPatients.map((patient) =>
+          resultsService.getResultsByPatient(patient.id).catch(() => [])
+        );
+        const resultsArrays = await Promise.all(resultsPromises);
+        const allResultsData = resultsArrays.flat();
+
+        // Fetch test details for each result
+        const resultsWithTests = await Promise.all(
+          allResultsData.map(async (result) => {
+            if (result.test?.id) {
+              try {
+                const testDetails = await testsService.getTestById(result.test.id);
+                return { ...result, test: testDetails };
+              } catch {
+                return result;
+              }
+            }
+            return result;
+          })
+        );
+
+        setAllResults(resultsWithTests);
+      }
     } catch (err) {
       const apiError = err as ApiError;
       setError(getErrorMessage(apiError));
@@ -99,12 +143,26 @@ export const ResultList: React.FC = () => {
 
   const fetchFilterData = async () => {
     try {
-      const [patientsData, testsData] = await Promise.all([
-        patientsService.getPatients({ limit: 100 }),
-        testsService.getTests({ isActive: true }),
-      ]);
-      setPatients(patientsData.data);
-      setTests(testsData);
+      const isTechnician = user?.role === UserRole.TEST_TECHNICIAN || user?.role === UserRole.LAB_TECHNICIAN;
+
+      // Fetch tests for filter (all users need this)
+      try {
+        const testsData = await testsService.getTests({ isActive: true });
+        setTests(testsData);
+      } catch (err) {
+        // Silently fail - tests filter is optional
+      }
+
+      // Fetch patients for filter (only for non-technicians, as technicians get patients from their results)
+      if (!isTechnician) {
+        try {
+          const patientsData = await patientsService.getPatients({ limit: 100 });
+          setPatients(patientsData.data);
+        } catch (err) {
+          // Silently fail - patients filter is optional
+        }
+      }
+      // For technicians, patients will be populated from their results in fetchAllResults
     } catch (err) {
       // Silently fail - filters are optional
     }
@@ -113,7 +171,7 @@ export const ResultList: React.FC = () => {
   useEffect(() => {
     fetchAllResults();
     fetchFilterData();
-  }, []);
+  }, [user?.role]);
 
   // Filter and search results client-side
   const filteredResults = useMemo(() => {

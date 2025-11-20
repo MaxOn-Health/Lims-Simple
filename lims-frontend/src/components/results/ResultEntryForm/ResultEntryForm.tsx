@@ -56,10 +56,13 @@ export const ResultEntryForm: React.FC = () => {
           setTest(testDetails);
         }
 
-        // Check if assignment is in COMPLETED status
-        if (assignmentData.status !== AssignmentStatus.COMPLETED) {
+        // Ensure assignment is in a state that allows result entry
+        if (
+          assignmentData.status !== AssignmentStatus.IN_PROGRESS &&
+          assignmentData.status !== AssignmentStatus.ASSIGNED
+        ) {
           setError(
-            `Cannot submit results. Assignment status must be COMPLETED. Current status: ${assignmentData.status}`
+            `Cannot submit results. Assignment must be IN_PROGRESS or ASSIGNED. Current status: ${assignmentData.status}`
           );
         }
       } catch (err) {
@@ -202,18 +205,19 @@ export const ResultEntryForm: React.FC = () => {
       </Card>
 
       {/* Status Warning */}
-      {assignment.status !== AssignmentStatus.COMPLETED && (
+      {assignment.status !== AssignmentStatus.IN_PROGRESS &&
+        assignment.status !== AssignmentStatus.ASSIGNED && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Cannot submit results. Assignment status must be COMPLETED. Current status:{' '}
+            Cannot submit results. Assignment must be IN_PROGRESS or ASSIGNED. Current status:{' '}
             {assignment.status}
           </AlertDescription>
         </Alert>
       )}
 
       {/* Result Entry Form */}
-      {assignment.status === AssignmentStatus.COMPLETED && (
+      {(assignment.status === AssignmentStatus.IN_PROGRESS || assignment.status === AssignmentStatus.ASSIGNED) && (
         <Card>
           <CardHeader>
             <CardTitle>Result Values</CardTitle>

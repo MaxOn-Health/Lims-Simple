@@ -157,14 +157,14 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   }, [tests, selectedAddonTestIds]);
 
   const packagePrice = selectedPackage?.price || 0;
-  const addonTestsTotal = useMemo(() => {
+  const testsTotal = useMemo(() => {
     // Note: Tests don't have individual prices in the current schema
-    // The backend calculates addon test prices separately
-    // For now, we'll show 0 for addon tests total
+    // The backend calculates test prices separately
+    // For now, we'll show 0 for individual test prices
     return 0;
   }, [selectedAddonTests]);
 
-  const grandTotal = packagePrice + addonTestsTotal;
+  const grandTotal = packagePrice + testsTotal;
 
   const onSubmit = async (data: CreatePatientRequest) => {
     try {
@@ -391,24 +391,28 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       {/* Package Selection Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Package Selection</CardTitle>
+          <CardTitle>Package Selection (Optional)</CardTitle>
+          <p className="text-sm text-muted-foreground mt-2">
+            Select a package OR choose individual tests below. At least one test must be selected.
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="packageId">Package *</Label>
+            <Label htmlFor="packageId">Package</Label>
             <Controller
               name="packageId"
               control={control}
               render={({ field }) => (
                 <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
+                  value={field.value || 'none'}
+                  onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)}
                   disabled={isLoadingPackages}
                 >
                   <SelectTrigger id="packageId">
-                    <SelectValue placeholder="Select a package" />
+                    <SelectValue placeholder="Select a package (optional)" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">None - Select individual tests</SelectItem>
                     {packages.map((pkg) => (
                       <SelectItem key={pkg.id} value={pkg.id}>
                         {pkg.name} - ₹{Number(pkg.price).toFixed(2)}
@@ -450,10 +454,25 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         </CardContent>
       </Card>
 
-      {/* Addon Tests Section */}
+      {/* Tests Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Addon Tests (Optional)</CardTitle>
+          <CardTitle>
+            {selectedPackageId ? 'Addon Tests (Optional)' : 'Tests'}
+            {!selectedPackageId && (
+              <span className="text-destructive ml-1">*</span>
+            )}
+          </CardTitle>
+          {!selectedPackageId && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Select at least one test to register the patient.
+            </p>
+          )}
+          {selectedPackageId && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Select additional tests to include with the package (optional).
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {isLoadingTests ? (
@@ -496,6 +515,12 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               ))}
             </div>
           )}
+          {errors.addonTestIds && (
+            <p className="text-sm font-medium text-destructive">{errors.addonTestIds.message}</p>
+          )}
+          {errors.root?.message && (
+            <p className="text-sm font-medium text-destructive">{errors.root.message}</p>
+          )}
 
           {selectedAddonTests.length > 0 && (
             <div className="p-4 rounded-lg bg-muted/50">
@@ -519,27 +544,29 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Package Price</span>
-              <div className="flex items-baseline gap-1">
-                <IndianRupee className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">
-                  {packagePrice.toFixed(2)}
-                </span>
+            {selectedPackageId && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Package Price</span>
+                <div className="flex items-baseline gap-1">
+                  <IndianRupee className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground">
+                    {packagePrice.toFixed(2)}
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
 
             {selectedAddonTests.length > 0 && (
               <>
-                <Separator />
+                {selectedPackageId && <Separator />}
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
-                    Addon Tests ({selectedAddonTests.length})
+                    {selectedPackageId ? 'Addon Tests' : 'Tests'} ({selectedAddonTests.length})
                   </span>
                   <div className="flex items-baseline gap-1">
                     <IndianRupee className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-medium text-foreground">
-                      {addonTestsTotal.toFixed(2)}
+                      {testsTotal.toFixed(2)}
                     </span>
                   </div>
                 </div>

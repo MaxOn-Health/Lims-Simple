@@ -6,6 +6,7 @@ import {
   IsOptional,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -62,6 +63,7 @@ export class UpdatePatientDto {
     example: 'john.doe.updated@example.com',
   })
   @IsOptional()
+  @ValidateIf((o) => o.email !== undefined && o.email !== null && o.email !== '')
   @IsEmail({}, { message: 'Email must be a valid email address' })
   email?: string;
 

@@ -86,28 +86,35 @@ export const PatientView: React.FC<PatientViewProps> = ({ patient, onUpdate }) =
         </CardContent>
       </Card>
 
-      {/* Package Information Card */}
+      {/* Package/Test Information Card */}
       {patientPackage && (
         <Card>
           <CardHeader>
-            <CardTitle>Package Information</CardTitle>
+            <CardTitle>
+              {patientPackage.packageId ? 'Package Information' : 'Test Information'}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Package Name</p>
-              <p className="text-lg font-semibold text-foreground mt-1">
-                {patientPackage.packageName}
-              </p>
-            </div>
-
-            <Separator />
+            {patientPackage.packageId && patientPackage.packageName && (
+              <>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Package Name</p>
+                  <p className="text-lg font-semibold text-foreground mt-1">
+                    {patientPackage.packageName}
+                  </p>
+                </div>
+                <Separator />
+              </>
+            )}
 
             {patientPackage.addonTestIds && patientPackage.addonTestIds.length > 0 && (
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-2">Addon Tests</p>
+                <p className="text-sm font-medium text-muted-foreground mb-2">
+                  {patientPackage.packageId ? 'Addon Tests' : 'Selected Tests'}
+                </p>
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    {patientPackage.addonTestIds.length} addon test
+                    {patientPackage.addonTestIds.length} test
                     {patientPackage.addonTestIds.length !== 1 ? 's' : ''} selected
                   </p>
                   {/* Note: Test names would need to be fetched separately if needed */}

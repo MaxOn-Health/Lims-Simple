@@ -129,12 +129,12 @@ describe('ResultsController (e2e)', () => {
         adminId: adminUserId,
       });
 
-    // Update assignment status to COMPLETED
+    // Update assignment status to IN_PROGRESS so technician can record results
     await request(app.getHttpServer())
       .put(`/assignments/${assignmentId}/status`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        status: AssignmentStatus.COMPLETED,
+        status: AssignmentStatus.IN_PROGRESS,
       });
   });
 
@@ -175,7 +175,7 @@ describe('ResultsController (e2e)', () => {
   });
 
   it('/results/submit (POST) - should return warning for value outside normal range', async () => {
-    // Create another assignment and complete it
+    // Create another assignment and move it to IN_PROGRESS
     const assignRes = await request(app.getHttpServer())
       .post('/assignments/manual-assign')
       .set('Authorization', `Bearer ${authToken}`)
@@ -190,7 +190,7 @@ describe('ResultsController (e2e)', () => {
       .put(`/assignments/${newAssignmentId}/status`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        status: AssignmentStatus.COMPLETED,
+        status: AssignmentStatus.IN_PROGRESS,
       });
 
     const res = await request(app.getHttpServer())
@@ -224,7 +224,7 @@ describe('ResultsController (e2e)', () => {
       .put(`/assignments/${newAssignmentId}/status`)
       .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        status: AssignmentStatus.COMPLETED,
+        status: AssignmentStatus.IN_PROGRESS,
       });
 
     await request(app.getHttpServer())
@@ -239,7 +239,7 @@ describe('ResultsController (e2e)', () => {
       .expect(400);
   });
 
-  it('/results/submit (POST) - should reject if assignment not COMPLETED', async () => {
+  it('/results/submit (POST) - should reject if assignment status is invalid', async () => {
     const assignRes = await request(app.getHttpServer())
       .post('/assignments/manual-assign')
       .set('Authorization', `Bearer ${authToken}`)
@@ -249,6 +249,14 @@ describe('ResultsController (e2e)', () => {
         adminId: adminUserId,
       });
     const newAssignmentId = assignRes.body.id;
+
+    // Force status to SUBMITTED, which should block new result entries
+    await request(app.getHttpServer())
+      .put(`/assignments/${newAssignmentId}/status`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        status: AssignmentStatus.SUBMITTED,
+      });
 
     await request(app.getHttpServer())
       .post('/results/submit')

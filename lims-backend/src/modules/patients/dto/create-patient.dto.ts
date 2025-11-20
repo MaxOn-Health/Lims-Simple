@@ -9,6 +9,7 @@ import {
   Min,
   MaxLength,
   Matches,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -62,6 +63,7 @@ export class CreatePatientDto {
     example: 'john.doe@example.com',
   })
   @IsOptional()
+  @ValidateIf((o) => o.email !== undefined && o.email !== null && o.email !== '')
   @IsEmail({}, { message: 'Email must be a valid email address' })
   email?: string;
 
@@ -101,21 +103,22 @@ export class CreatePatientDto {
   @IsUUID('4', { message: 'Project ID must be a valid UUID' })
   projectId?: string;
 
-  @ApiProperty({
-    description: 'Package ID',
+  @ApiPropertyOptional({
+    description: 'Package ID (optional if selecting individual tests)',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
+  @IsOptional()
   @IsUUID('4', { message: 'Package ID must be a valid UUID' })
-  packageId: string;
+  packageId?: string;
 
   @ApiPropertyOptional({
-    description: 'Array of addon test IDs',
+    description: 'Array of test IDs (required if no package selected). Can be used as addon tests when package is selected, or as standalone tests when no package.',
     example: ['123e4567-e89b-12d3-a456-426614174001', '123e4567-e89b-12d3-a456-426614174002'],
     type: [String],
   })
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true, message: 'Each addon test ID must be a valid UUID' })
+  @IsUUID('4', { each: true, message: 'Each test ID must be a valid UUID' })
   @IsValidAddonTests()
   addonTestIds?: string[];
 }

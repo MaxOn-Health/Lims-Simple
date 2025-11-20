@@ -42,6 +42,10 @@ export default registerAs('database', () => {
 
   if (process.env.DATABASE_URL) {
     config.url = process.env.DATABASE_URL;
+    // Add SSL configuration for Render PostgreSQL and other cloud databases
+    config.ssl = {
+      rejectUnauthorized: false,
+    };
   } else {
     config.host = process.env.DATABASE_HOST || 'localhost';
     config.port = parseInt(process.env.DATABASE_PORT, 10) || 5432;

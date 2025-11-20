@@ -124,18 +124,34 @@ export const PatientEditForm: React.FC<PatientEditFormProps> = ({ patient, onSuc
         </CardContent>
       </Card>
 
-      {/* Package Information - Read Only */}
+      {/* Package/Test Information - Read Only */}
       {patientPackage && (
         <Card>
           <CardHeader>
-            <CardTitle>Package Information</CardTitle>
+            <CardTitle>
+              {patientPackage.packageId ? 'Package Information' : 'Test Information'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="p-3 bg-muted rounded-md">
-              <p className="font-semibold text-foreground">{patientPackage.packageName}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Package cannot be changed after registration
-              </p>
+              {patientPackage.packageId && patientPackage.packageName ? (
+                <>
+                  <p className="font-semibold text-foreground">{patientPackage.packageName}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Package cannot be changed after registration
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-foreground">Individual Tests</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {patientPackage.addonTestIds?.length || 0} test{patientPackage.addonTestIds?.length !== 1 ? 's' : ''} selected
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Tests cannot be changed after registration
+                  </p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>

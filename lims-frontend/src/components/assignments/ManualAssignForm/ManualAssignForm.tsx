@@ -23,6 +23,7 @@ import { assignmentsService } from '@/services/api/assignments.service';
 import { patientsService } from '@/services/api/patients.service';
 import { testsService } from '@/services/api/tests.service';
 import { usersService } from '@/services/api/users.service';
+import { packagesService } from '@/services/api/packages.service';
 import { useUIStore } from '@/store/ui.store';
 import { getErrorMessage } from '@/utils/error-handler';
 import { ApiError } from '@/types/api.types';
@@ -93,14 +94,33 @@ export const ManualAssignForm: React.FC = () => {
     try {
       const patient = await patientsService.getPatientById(selectedPatientId);
       const patientPackage = patient.patientPackages?.[0];
-      const packageTests = patientPackage?.packageId ? [] : []; // Would need to fetch package tests
+      
+      let allTestIds: string[] = [];
+      
+      // Get tests from package if package exists
+      if (patientPackage?.packageId) {
+        const packageTests = await packagesService.getPackageTests(patientPackage.packageId);
+        const packageTestIds = packageTests.map((pt) => pt.testId);
+        allTestIds.push(...packageTestIds);
+      }
+      
+      // Add addon/standalone tests
       const addonTestIds = patientPackage?.addonTestIds || [];
-
-      // Fetch all tests and filter to patient's tests
+      allTestIds.push(...addonTestIds);
+      
+      // Remove duplicates
+      allTestIds = [...new Set(allTestIds)];
+      
+      // If no tests found, set empty array and return
+      if (allTestIds.length === 0) {
+        setTests([]);
+        return;
+      }
+      
+      // Fetch all active tests and filter to patient's tests
       const allTests = await testsService.getTests({ isActive: true });
-      const patientTests = allTests.filter(
-        (test) => addonTestIds.includes(test.id) // Simplified - would need package tests too
-      );
+      const patientTests = allTests.filter((test) => allTestIds.includes(test.id));
+      
       setTests(patientTests);
     } catch (err) {
       const apiError = err as ApiError;
@@ -187,16 +207,28 @@ export const ManualAssignForm: React.FC = () => {
                 name="patientId"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value || ''} onValueChange={field.onChange}>
+                  <Select 
+                    value={field.value || ''} 
+                    onValueChange={field.onChange}
+                    disabled={isLoadingPatients}
+                  >
                     <SelectTrigger id="patient-id">
-                      <SelectValue placeholder="Select a patient" />
+                      <SelectValue placeholder={isLoadingPatients ? "Loading patients..." : "Select a patient"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {patients.map((patient) => (
-                        <SelectItem key={patient.id} value={patient.id}>
-                          {patient.name} ({patient.patientId})
-                        </SelectItem>
-                      ))}
+                      {isLoadingPatients ? (
+                        <div className="p-2 text-sm text-muted-foreground">Loading patients...</div>
+                      ) : patients.length === 0 ? (
+                        <div className="p-2 text-sm text-muted-foreground">
+                          {patientSearchQuery ? "No patients found matching your search" : "No patients available"}
+                        </div>
+                      ) : (
+                        patients.map((patient) => (
+                          <SelectItem key={patient.id} value={patient.id}>
+                            {patient.name} ({patient.patientId})
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 )}

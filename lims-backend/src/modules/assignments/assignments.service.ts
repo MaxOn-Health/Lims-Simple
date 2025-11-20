@@ -55,27 +55,29 @@ export class AssignmentsService {
     }
 
     if (!patient.patientPackages || patient.patientPackages.length === 0) {
-      throw new BadRequestException('Patient has no packages assigned');
+      throw new BadRequestException('Patient has no package or tests assigned');
     }
 
     const patientPackage = patient.patientPackages[0]; // Assuming one package per patient for now
 
-    // Get all tests from package
-    const packageTests = await this.packageTestsRepository.find({
-      where: { packageId: patientPackage.packageId },
-      relations: ['test'],
-    });
+    // Get all tests from package (only if packageId exists)
+    const packageTestIds: string[] = [];
+    if (patientPackage.packageId) {
+      const packageTests = await this.packageTestsRepository.find({
+        where: { packageId: patientPackage.packageId },
+        relations: ['test'],
+      });
+      packageTestIds.push(...packageTests.map((pt) => pt.testId));
+    }
 
-    const packageTestIds = packageTests.map((pt) => pt.testId);
-
-    // Get addon test IDs
-    const addonTestIds = patientPackage.addonTestIds || [];
+    // Get test IDs from PatientPackage (these are either addon tests when package exists, or standalone tests when no package)
+    const testIds = patientPackage.addonTestIds || [];
 
     // Combine all test IDs
-    const allTestIds = [...packageTestIds, ...addonTestIds];
+    const allTestIds = [...packageTestIds, ...testIds];
 
     if (allTestIds.length === 0) {
-      throw new BadRequestException('No tests found in patient package');
+      throw new BadRequestException('No tests found for patient');
     }
 
     // Get all tests
@@ -155,21 +157,27 @@ export class AssignmentsService {
       throw new NotFoundException(`Test with ID ${dto.testId} not found or not active`);
     }
 
-    // Validate test is in patient's package or addons
+    // Validate test is in patient's package or tests
     const patientPackage = patient.patientPackages?.[0];
     if (!patientPackage) {
-      throw new BadRequestException('Patient has no packages assigned');
+      throw new BadRequestException('Patient has no package or tests assigned');
     }
 
-    const packageTests = await this.packageTestsRepository.find({
-      where: { packageId: patientPackage.packageId },
-    });
-    const packageTestIds = packageTests.map((pt) => pt.testId);
-    const addonTestIds = patientPackage.addonTestIds || [];
-    const allTestIds = [...packageTestIds, ...addonTestIds];
+    // Get package test IDs if package exists
+    const packageTestIds: string[] = [];
+    if (patientPackage.packageId) {
+      const packageTests = await this.packageTestsRepository.find({
+        where: { packageId: patientPackage.packageId },
+      });
+      packageTestIds.push(...packageTests.map((pt) => pt.testId));
+    }
+
+    // Get test IDs from PatientPackage (either addon tests with package, or standalone tests)
+    const testIds = patientPackage.addonTestIds || [];
+    const allTestIds = [...packageTestIds, ...testIds];
 
     if (!allTestIds.includes(dto.testId)) {
-      throw new BadRequestException('Test is not in patient package or addon tests');
+      throw new BadRequestException('Test is not in patient package or selected tests');
     }
 
     // Validate admin if provided
@@ -421,7 +429,7 @@ export class AssignmentsService {
     const validTransitions: Record<AssignmentStatus, AssignmentStatus[]> = {
       [AssignmentStatus.PENDING]: [AssignmentStatus.ASSIGNED],
       [AssignmentStatus.ASSIGNED]: [AssignmentStatus.IN_PROGRESS],
-      [AssignmentStatus.IN_PROGRESS]: [AssignmentStatus.COMPLETED],
+      [AssignmentStatus.IN_PROGRESS]: [],
       [AssignmentStatus.COMPLETED]: [AssignmentStatus.SUBMITTED],
       [AssignmentStatus.SUBMITTED]: [], // No transitions from SUBMITTED
     };

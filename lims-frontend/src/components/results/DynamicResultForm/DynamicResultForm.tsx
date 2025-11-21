@@ -43,6 +43,7 @@ export const DynamicResultForm: React.FC<DynamicResultFormProps> = ({
 
   // Detect if this is an eye test
   const isEyeTest =
+    test.adminRole === 'eye_test' ||
     test.adminRole === 'eye' ||
     test.name.toLowerCase().includes('eye');
 
@@ -99,6 +100,33 @@ export const DynamicResultForm: React.FC<DynamicResultFormProps> = ({
   const resultValues = watch('resultValues');
 
   const handleFormSubmit = async (data: SubmitResultRequest | UpdateResultRequest) => {
+    // Clean up resultValues: remove undefined/null values and ensure numbers are actually numbers
+    // Note: This is an extra safety check - the Zod schema should handle most of this
+    if (data.resultValues && isEyeTest) {
+      const cleanedResultValues: Record<string, any> = {};
+      for (const [key, value] of Object.entries(data.resultValues)) {
+        // Skip undefined, null, or empty string values
+        if (value === null || value === undefined || value === '') {
+          continue;
+        }
+        // If it's a string that looks like a number, convert it
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (trimmed === '') {
+            continue;
+          }
+          const num = Number(trimmed);
+          // Only include if it's a valid number
+          if (!isNaN(num)) {
+            cleanedResultValues[key] = num;
+          }
+        } else {
+          // Keep other values as-is (numbers, booleans, etc.)
+          cleanedResultValues[key] = value;
+        }
+      }
+      data.resultValues = cleanedResultValues;
+    }
     await onSubmit(data);
   };
 

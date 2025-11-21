@@ -7,28 +7,56 @@ import {
 } from '@/utils/constants/eye.constants';
 
 /**
- * Zod schema for vision value (string or number)
+ * Zod schema for vision value (string or number) - converts strings to numbers
  */
-const visionValueSchema = z
-  .union([z.string(), z.number()])
-  .optional()
-  .transform((val) => {
+const visionValueSchema = z.preprocess(
+  (val) => {
+    // Handle null, undefined, or empty values
     if (val === null || val === undefined || val === '') return undefined;
-    if (typeof val === 'string' && val.trim() === '') return undefined;
-    return val;
-  });
+    
+    // If already a number, return as-is
+    if (typeof val === 'number') {
+      return isNaN(val) ? undefined : val;
+    }
+    
+    // If string, try to convert to number
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (trimmed === '') return undefined;
+      const num = Number(trimmed);
+      return isNaN(num) ? undefined : num;
+    }
+    
+    return undefined;
+  },
+  z.number().optional()
+);
 
 /**
- * Zod schema for eye parameter value (string or number)
+ * Zod schema for eye parameter value (string or number) - converts strings to numbers
  */
-const eyeParameterValueSchema = z
-  .union([z.string(), z.number()])
-  .optional()
-  .transform((val) => {
+const eyeParameterValueSchema = z.preprocess(
+  (val) => {
+    // Handle null, undefined, or empty values
     if (val === null || val === undefined || val === '') return undefined;
-    if (typeof val === 'string' && val.trim() === '') return undefined;
-    return val;
-  });
+    
+    // If already a number, return as-is
+    if (typeof val === 'number') {
+      return isNaN(val) ? undefined : val;
+    }
+    
+    // If string, try to convert to number
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (trimmed === '') return undefined;
+      const num = Number(trimmed);
+      return isNaN(num) ? undefined : num;
+    }
+    
+    return undefined;
+  },
+  z.number().optional()
+);
 
 /**
  * Zod schema for eye health field (string)

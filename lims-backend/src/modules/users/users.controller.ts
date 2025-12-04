@@ -23,6 +23,7 @@ import {
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { PasswordService } from '../../common/services/password.service';
+import { AuditService } from '../audit/audit.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -44,7 +45,8 @@ export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly passwordService: PasswordService,
-  ) {}
+    private readonly auditService: AuditService,
+  ) { }
 
   @Post()
   @UseGuards(RolesGuard)
@@ -78,7 +80,16 @@ export class UsersController {
       isActive: true,
     });
 
-    // TODO: Log action in audit_logs (Phase 10)
+    // Log action in audit_logs
+    await this.auditService.log(
+      null, // Creator ID (system or super admin context not available here directly, but usually from request.user)
+      'CREATE_USER',
+      'USER',
+      user.id,
+      { email: user.email, role: user.role },
+      null, // IP address would need Request object
+      null, // User agent would need Request object
+    );
 
     // Return user without password
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -102,7 +113,7 @@ export class UsersController {
   @ApiResponse({ status: 403, description: 'Forbidden - SUPER_ADMIN only' })
   async findAll(@Query() query: QueryUsersDto): Promise<PaginatedUsersResponseDto> {
     const result = await this.usersService.findAllPaginated(query);
-    
+
     // Remove passwordHash from all users
     const usersWithoutPassword = result.data.map((user: User) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -186,7 +197,16 @@ export class UsersController {
 
     const updatedUser = await this.usersService.update(id, updateUserDto);
 
-    // TODO: Log changes in audit_logs (Phase 10)
+    // Log changes in audit_logs
+    await this.auditService.log(
+      currentUser.userId,
+      'UPDATE_USER',
+      'USER',
+      id,
+      updateUserDto,
+      null,
+      null,
+    );
 
     // Return user without password
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -224,7 +244,16 @@ export class UsersController {
 
     await this.usersService.softDelete(id);
 
-    // TODO: Log action in audit_logs (Phase 10)
+    // Log action in audit_logs
+    await this.auditService.log(
+      currentUser.userId,
+      'DELETE_USER',
+      'USER',
+      id,
+      null,
+      null,
+      null,
+    );
 
     return { message: 'User deleted successfully' };
   }
@@ -278,7 +307,16 @@ export class UsersController {
     // Update password
     await this.usersService.changePassword(id, newPasswordHash);
 
-    // TODO: Log action in audit_logs (Phase 10)
+    // Log action in audit_logs
+    await this.auditService.log(
+      currentUser.userId,
+      'CHANGE_PASSWORD',
+      'USER',
+      id,
+      null,
+      null,
+      null,
+    );
 
     return { message: 'Password changed successfully' };
   }

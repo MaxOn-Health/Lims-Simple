@@ -117,7 +117,7 @@ export const AssignmentList: React.FC = () => {
     try {
       // Check if user is a technician (TEST_TECHNICIAN or LAB_TECHNICIAN)
       const isTechnician = user?.role === UserRole.TEST_TECHNICIAN || user?.role === UserRole.LAB_TECHNICIAN;
-      
+
       if (isTechnician) {
         // Use my-assignments endpoint for technicians
         const data = await assignmentsService.getMyAssignments(statusFilter);
@@ -158,7 +158,7 @@ export const AssignmentList: React.FC = () => {
     try {
       // Check if user is a technician - technicians don't need all filter data
       const isTechnician = user?.role === UserRole.TEST_TECHNICIAN || user?.role === UserRole.LAB_TECHNICIAN;
-      
+
       // Fetch patients for filter (if not technician, as technicians only see their own assignments)
       if (!isTechnician) {
         try {
@@ -277,44 +277,55 @@ export const AssignmentList: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Simplified Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <ClipboardList className="h-8 w-8 text-primary" />
-            Test Orders
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
+            <ClipboardList className="h-6 w-6 text-primary" />
+            Pending Tests
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage test assignments and track their status
+          <p className="text-muted-foreground mt-1 text-sm">
+            View and assign test orders to technicians.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <HasRole allowedRoles={[UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN]}>
             <Button
-              variant="outline"
+              variant="primary"
               onClick={() => router.push('/assignments/manual-assign')}
-              size="default"
+              size="lg"
+              className="shadow-md shadow-primary/20"
             >
-              <Plus className="mr-2 h-4 w-4" />
-              Manual Assign
+              <Plus className="mr-2 h-5 w-5" />
+              Assign New Test
             </Button>
             <Button
-              variant="primary"
+              variant="outline"
               onClick={() => router.push('/assignments/auto-assign')}
-              size="default"
+              size="lg"
+              className="hidden md:flex"
             >
-              <Plus className="mr-2 h-4 w-4" />
               Auto Assign
             </Button>
           </HasRole>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-end gap-4">
-            <div className="flex-1">
+      <Card className="border-none shadow-md">
+        <CardHeader className="bg-gray-50/50 border-b pb-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-4 justify-between">
+            <div className="flex-1 max-w-md">
               <AssignmentSearch value={searchQuery} onChange={handleSearchChange} />
             </div>
+
+            {/* Simple Filter Toggle (could be expanded, but keeping it clean for now) */}
+            <div className="flex items-center gap-2">
+              {/* We can add a 'Filter' button here later if needed to toggle the advanced filters */}
+            </div>
+          </div>
+
+          {/* Advanced Filters - Visible but styled to be less intrusive */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
             <AssignmentFilters
               statusFilter={statusFilter}
               onStatusFilterChange={handleStatusFilterChange}
@@ -331,26 +342,29 @@ export const AssignmentList: React.FC = () => {
             />
           </div>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="p-0">
           {isLoading ? (
-            <div className="space-y-3">
+            <div className="p-6 space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} height="h-12" />
+                <Skeleton key={i} height="h-16" className="rounded-lg" />
               ))}
             </div>
           ) : paginatedAssignments.length === 0 ? (
-            <EmptyState
-              title="No assignments found"
-              message="Try adjusting your search or filters to find what you're looking for."
-              action={
-                <Button variant="outline" onClick={handleResetFilters}>
-                  Clear Filters
-                </Button>
-              }
-            />
+            <div className="p-12">
+              <EmptyState
+                title="No pending tests found"
+                message="Great job! All test orders have been processed or none match your search."
+                action={
+                  <Button variant="outline" onClick={handleResetFilters}>
+                    Clear Search
+                  </Button>
+                }
+              />
+            </div>
           ) : (
             <>
-              <div className="rounded-md border">
+              <div className="border-t border-gray-100">
                 <AssignmentTable
                   assignments={paginatedAssignments}
                   onReassign={handleReassignClick}
@@ -358,7 +372,7 @@ export const AssignmentList: React.FC = () => {
                 />
               </div>
               {pagination.totalPages > 0 && (
-                <div className="mt-4">
+                <div className="p-4 border-t border-gray-100 bg-gray-50/30">
                   <Pagination
                     currentPage={pagination.page}
                     totalPages={pagination.totalPages}

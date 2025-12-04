@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Package } from './entities/package.entity';
 import { PackageTest } from './entities/package-test.entity';
+import { PatientPackage } from '../patients/entities/patient-package.entity';
 import { Test } from '../tests/entities/test.entity';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
@@ -18,7 +19,9 @@ export class PackagesService {
     private packageTestsRepository: Repository<PackageTest>,
     @InjectRepository(Test)
     private testsRepository: Repository<Test>,
-  ) {}
+    @InjectRepository(PatientPackage)
+    private patientPackagesRepository: Repository<PatientPackage>,
+  ) { }
 
   async create(createPackageDto: CreatePackageDto): Promise<Package> {
     // Check if package name already exists
@@ -87,8 +90,16 @@ export class PackagesService {
       throw new NotFoundException('Package not found');
     }
 
-    // TODO: Check if package is used by any patient (Phase 4)
-    // For now, just soft delete
+    // Check if package is used by any patient
+    const patientPackages = await this.patientPackagesRepository.find({
+      where: { packageId: id },
+      take: 1,
+    });
+
+    if (patientPackages.length > 0) {
+      throw new BadRequestException('Cannot delete package that has been assigned to patients');
+    }
+
     await this.packagesRepository.update(id, { isActive: false });
   }
 

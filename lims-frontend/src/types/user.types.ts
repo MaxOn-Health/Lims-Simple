@@ -25,6 +25,7 @@ export interface AuthUser {
   fullName: string;
   role: UserRole;
   isActive?: boolean;
+  passkeyCredentialId?: string | null;
 }
 
 export interface CreateUserRequest {

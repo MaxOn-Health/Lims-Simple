@@ -95,6 +95,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           fullName: user.fullName,
           role: user.role,
           isActive: user.isActive,
+          passkeyCredentialId: user.passkeyCredentialId,
         },
         isAuthenticated: true,
         isLoading: false,

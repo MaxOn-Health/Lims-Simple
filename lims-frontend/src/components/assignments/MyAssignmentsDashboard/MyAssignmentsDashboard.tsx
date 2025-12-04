@@ -31,16 +31,22 @@ export const MyAssignmentsDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [updateStatusModalOpen, setUpdateStatusModalOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
-  
+
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  const fetchAssignments = async (status?: AssignmentStatus) => {
+  const fetchAssignments = async (status?: AssignmentStatus | 'completed') => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await assignmentsService.getMyAssignments(status);
-      setAssignments(data);
+      // Handle special case for "completed" tab - fetch all assignments and filter client-side
+      if (status === 'completed') {
+        const allData = await assignmentsService.getMyAssignments(undefined);
+        setAssignments(allData);
+      } else {
+        const data = await assignmentsService.getMyAssignments(status);
+        setAssignments(data);
+      }
     } catch (err) {
       const apiError = err as ApiError;
       setError(getErrorMessage(apiError));
@@ -57,23 +63,39 @@ export const MyAssignmentsDashboard: React.FC = () => {
     const status =
       selectedStatus === 'all'
         ? undefined
+        : selectedStatus === 'completed'
+        ? 'completed'
         : (selectedStatus as AssignmentStatus);
     fetchAssignments(status);
   }, [selectedStatus]);
 
-  // Filter assignments by search query
+  // Filter assignments by search query and status tab
   const filteredAssignments = useMemo(() => {
-    if (!debouncedSearchQuery) return assignments;
-    
-    const query = debouncedSearchQuery.toLowerCase();
-    return assignments.filter((assignment) => {
-      const patientName = assignment.patient?.name?.toLowerCase() || '';
-      const patientId = assignment.patient?.patientId?.toLowerCase() || '';
-      const testName = assignment.test?.name?.toLowerCase() || '';
-      
-      return patientName.includes(query) || patientId.includes(query) || testName.includes(query);
-    });
-  }, [assignments, debouncedSearchQuery]);
+    let filtered = assignments;
+
+    // Apply status filter for "completed" tab (show both COMPLETED and SUBMITTED)
+    if (selectedStatus === 'completed') {
+      filtered = filtered.filter(
+        (assignment) =>
+          assignment.status === AssignmentStatus.COMPLETED ||
+          assignment.status === AssignmentStatus.SUBMITTED
+      );
+    }
+
+    // Apply search query filter
+    if (debouncedSearchQuery) {
+      const query = debouncedSearchQuery.toLowerCase();
+      filtered = filtered.filter((assignment) => {
+        const patientName = assignment.patient?.name?.toLowerCase() || '';
+        const patientId = assignment.patient?.patientId?.toLowerCase() || '';
+        const testName = assignment.test?.name?.toLowerCase() || '';
+
+        return patientName.includes(query) || patientId.includes(query) || testName.includes(query);
+      });
+    }
+
+    return filtered;
+  }, [assignments, debouncedSearchQuery, selectedStatus]);
 
   // Get unique patients count
   const uniquePatients = useMemo(() => {
@@ -137,9 +159,13 @@ export const MyAssignmentsDashboard: React.FC = () => {
   const handleStatusUpdate = () => {
     setUpdateStatusModalOpen(false);
     setSelectedAssignment(null);
-    fetchAssignments(
-      selectedStatus === 'all' ? undefined : (selectedStatus as AssignmentStatus)
-    );
+      fetchAssignments(
+        selectedStatus === 'all'
+          ? undefined
+          : selectedStatus === 'completed'
+          ? 'completed'
+          : (selectedStatus as AssignmentStatus)
+      );
   };
 
   const handleUpdateStatus = (assignmentId: string) => {
@@ -157,7 +183,11 @@ export const MyAssignmentsDashboard: React.FC = () => {
         message={error}
         onRetry={() =>
           fetchAssignments(
-            selectedStatus === 'all' ? undefined : (selectedStatus as AssignmentStatus)
+            selectedStatus === 'all'
+              ? undefined
+              : selectedStatus === 'completed'
+              ? 'completed'
+              : (selectedStatus as AssignmentStatus)
           )
         }
       />
@@ -165,147 +195,138 @@ export const MyAssignmentsDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <ClipboardList className="h-8 w-8 text-primary" />
-          My Assignments
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your assigned tests and track their progress
-        </p>
+    <div className="space-y-8">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3 text-gray-900">
+            <ClipboardList className="h-8 w-8 text-primary" />
+            My Tasks
+          </h1>
+          <p className="text-muted-foreground mt-1 text-lg">
+            Hello! Here are the tests assigned to you today.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border shadow-sm">
+          {/* Quick status filter could go here if needed, but tabs cover it */}
+        </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Assignments
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.total}</div>
+      {/* Simplified Statistics - Focus on Actionable Numbers */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-blue-50 border-blue-100 shadow-sm">
+          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+            <span className="text-4xl font-bold text-blue-700 mb-1">
+              {statistics.byStatus[AssignmentStatus.ASSIGNED] + statistics.byStatus[AssignmentStatus.IN_PROGRESS]}
+            </span>
+            <span className="text-sm font-medium text-blue-600 uppercase tracking-wider">Pending Tasks</span>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-              <User className="h-4 w-4" />
-              Total Patients
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.uniquePatients}</div>
+
+        <Card className="bg-green-50 border-green-100 shadow-sm">
+          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+            <span className="text-4xl font-bold text-green-700 mb-1">
+              {statistics.byStatus[AssignmentStatus.COMPLETED] + statistics.byStatus[AssignmentStatus.SUBMITTED]}
+            </span>
+            <span className="text-sm font-medium text-green-600 uppercase tracking-wider">Completed</span>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Assigned
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.byStatus[AssignmentStatus.ASSIGNED]}</div>
+
+        <Card className="bg-gray-50 border-gray-100 shadow-sm hidden sm:block">
+          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+            <span className="text-4xl font-bold text-gray-700 mb-1">
+              {statistics.total}
+            </span>
+            <span className="text-sm font-medium text-gray-600 uppercase tracking-wider">Total Assigned</span>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              In Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {statistics.byStatus[AssignmentStatus.IN_PROGRESS]}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Completion Rate
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.completionRate}%</div>
+
+        <Card className="bg-purple-50 border-purple-100 shadow-sm hidden sm:block">
+          <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+            <span className="text-4xl font-bold text-purple-700 mb-1">
+              {statistics.completionRate}%
+            </span>
+            <span className="text-sm font-medium text-purple-600 uppercase tracking-wider">Completion Rate</span>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search/Filter */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Search Assignments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+      {/* Search & Filter Section */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
             <Input
-              placeholder="Search by patient name, patient ID, or test name..."
+              placeholder="Find a patient or test..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 h-12 text-lg shadow-sm"
             />
           </div>
-          {searchQuery && (
-            <div className="mt-2 text-sm text-muted-foreground">
-              Showing {filteredAssignments.length} of {assignments.length} assignments
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Status Tabs */}
-      <Tabs value={selectedStatus} onValueChange={setSelectedStatus}>
-        <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value={AssignmentStatus.ASSIGNED}>Assigned</TabsTrigger>
-          <TabsTrigger value={AssignmentStatus.IN_PROGRESS}>In Progress</TabsTrigger>
-          <TabsTrigger value={AssignmentStatus.COMPLETED}>Completed</TabsTrigger>
-        </TabsList>
+        {/* Tabs for Status */}
+        <Tabs value={selectedStatus} onValueChange={setSelectedStatus} className="w-full">
+          <TabsList className="w-full justify-start h-12 bg-muted/50 p-1 gap-1 overflow-x-auto">
+            <TabsTrigger value="all" className="flex-1 min-w-[80px] data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              All
+            </TabsTrigger>
+            <TabsTrigger value={AssignmentStatus.ASSIGNED} className="flex-1 min-w-[100px] data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              To Start
+            </TabsTrigger>
+            <TabsTrigger value={AssignmentStatus.IN_PROGRESS} className="flex-1 min-w-[100px] data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              In Progress
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="flex-1 min-w-[100px] data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              Completed
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value={selectedStatus} className="mt-6">
-          {isLoading ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Card key={i}>
-                  <CardHeader>
-                    <Skeleton height="h-6" />
-                    <Skeleton height="h-4" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton height="h-20" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : assignments.length === 0 ? (
-            <EmptyState
-              title="No assignments found"
-              message={
-                searchQuery
-                  ? `No assignments found matching "${searchQuery}". Try adjusting your search.`
-                  : selectedStatus === 'all'
-                  ? "You don't have any assignments yet."
-                  : `You don't have any ${selectedStatus.toLowerCase()} assignments.`
-              }
-            />
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredAssignments.map((assignment) => (
-                <AssignmentCard
-                  key={assignment.id}
-                  assignment={assignment}
-                  onStart={handleStart}
-                  onComplete={handleComplete}
-                  onUpdateStatus={handleUpdateStatus}
+          <TabsContent value={selectedStatus} className="mt-6">
+            {isLoading ? (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Card key={i} className="border-none shadow-md">
+                    <CardHeader>
+                      <Skeleton height="h-6" width="w-3/4" />
+                      <Skeleton height="h-4" width="w-1/2" />
+                    </CardHeader>
+                    <CardContent>
+                      <Skeleton height="h-24" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : assignments.length === 0 ? (
+              <div className="py-12">
+                <EmptyState
+                  title="No tasks found"
+                  message={
+                    searchQuery
+                      ? `No tasks found matching "${searchQuery}".`
+                      : selectedStatus === 'all'
+                        ? "You have no tasks assigned at the moment."
+                        : selectedStatus === 'completed'
+                        ? "You have no completed tasks yet."
+                        : `You have no ${selectedStatus.toLowerCase().replace('_', ' ')} tasks.`
+                  }
                 />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredAssignments.map((assignment) => (
+                  <AssignmentCard
+                    key={assignment.id}
+                    assignment={assignment}
+                    onStart={handleStart}
+                    onComplete={handleComplete}
+                    onUpdateStatus={handleUpdateStatus}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
 
       {selectedAssignment && (
         <UpdateStatusModal

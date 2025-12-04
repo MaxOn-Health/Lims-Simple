@@ -116,45 +116,43 @@ export const AssignmentCard: React.FC<AssignmentCardProps> = ({
         </div>
       </CardContent>
 
-      <CardFooter className="pt-4 border-t flex-shrink-0">
-        <div className="flex flex-wrap gap-2 w-full">
-          <Link href={`/assignments/${assignment.id}`} className="flex-1 min-w-[70px]">
-            <Button variant="ghost" size="sm" fullWidth className="gap-1.5 text-xs">
-              <Eye className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">View</span>
-            </Button>
-          </Link>
-          {assignment.status === AssignmentStatus.ASSIGNED && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleStart}
-              className="flex-1 min-w-[70px] gap-1.5 text-xs"
-            >
-              <Play className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Start</span>
-            </Button>
-          )}
+      <CardFooter className="pt-4 border-t flex-shrink-0 bg-gray-50/50">
+        <div className="flex flex-col w-full gap-2">
+          {/* Primary Action - Full Width */}
           {(assignment.status === AssignmentStatus.ASSIGNED ||
             assignment.status === AssignmentStatus.IN_PROGRESS) && (
               <Button
                 variant="primary"
-                size="sm"
+                size="default"
                 onClick={handleSubmitResult}
-                className="flex-1 min-w-[110px] gap-1.5 text-xs bg-green-600 hover:bg-green-700 text-white"
+                className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white shadow-sm h-10"
               >
-                <FileText className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">Enter Results</span>
+                <FileText className="h-4 w-4 shrink-0" />
+                <span className="font-medium">Enter Results</span>
               </Button>
             )}
-          {assignment.status === AssignmentStatus.SUBMITTED && (
-            <Link href={`/assignments/${assignment.id}`} className="flex-1 min-w-[90px]">
-              <Button variant="outline" size="sm" fullWidth className="gap-1.5 text-xs">
+
+          {/* Secondary Actions - Row */}
+          <div className="flex gap-2 w-full">
+            <Link href={`/assignments/${assignment.id}`} className="flex-1">
+              <Button variant="outline" size="sm" fullWidth className="gap-1.5 h-9">
                 <Eye className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">View Result</span>
+                <span>View Details</span>
               </Button>
             </Link>
-          )}
+
+            {assignment.status === AssignmentStatus.ASSIGNED && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleStart}
+                className="flex-1 gap-1.5 h-9"
+              >
+                <Play className="h-3.5 w-3.5 shrink-0" />
+                <span>Start</span>
+              </Button>
+            )}
+          </div>
         </div>
       </CardFooter>
     </Card>

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Test, TestField } from './entities/test.entity';
 import { PackageTest } from '../packages/entities/package-test.entity';
+import { Assignment } from '../assignments/entities/assignment.entity';
 import { CreateTestDto } from './dto/create-test.dto';
 import { UpdateTestDto } from './dto/update-test.dto';
 import { QueryTestsDto } from './dto/query-tests.dto';
@@ -14,7 +15,9 @@ export class TestsService {
     private testsRepository: Repository<Test>,
     @InjectRepository(PackageTest)
     private packageTestsRepository: Repository<PackageTest>,
-  ) {}
+    @InjectRepository(Assignment)
+    private assignmentsRepository: Repository<Assignment>,
+  ) { }
 
   async create(createTestDto: CreateTestDto): Promise<Test> {
     // Check if test name already exists
@@ -101,11 +104,11 @@ export class TestsService {
     }
 
     // Validate normal range if both are provided
-    const normalRangeMin = updateTestDto.normalRangeMin !== undefined 
-      ? updateTestDto.normalRangeMin 
+    const normalRangeMin = updateTestDto.normalRangeMin !== undefined
+      ? updateTestDto.normalRangeMin
       : test.normalRangeMin;
-    const normalRangeMax = updateTestDto.normalRangeMax !== undefined 
-      ? updateTestDto.normalRangeMax 
+    const normalRangeMax = updateTestDto.normalRangeMax !== undefined
+      ? updateTestDto.normalRangeMax
       : test.normalRangeMax;
 
     if (
@@ -116,8 +119,21 @@ export class TestsService {
       throw new BadRequestException('Normal range min must be less than max');
     }
 
-    // TODO: Check if test is used in any package (Phase 4)
-    // For now, allow update
+    // Check if test is used in any package
+    const packageTests = await this.packageTestsRepository.find({
+      where: { testId: id },
+    });
+
+    if (packageTests.length > 0) {
+      // If critical fields are changed, prevent update
+      if (
+        updateTestDto.normalRangeMin !== undefined ||
+        updateTestDto.normalRangeMax !== undefined ||
+        updateTestDto.unit !== undefined
+      ) {
+        throw new BadRequestException('Cannot update critical fields of a test that is used in packages');
+      }
+    }
 
     await this.testsRepository.update(id, updateTestDto);
     const updated = await this.findById(id);
@@ -142,8 +158,15 @@ export class TestsService {
       throw new BadRequestException('Cannot delete test that is used in packages');
     }
 
-    // TODO: Check if test is used in any assignment (Phase 4)
-    // For now, just check packages
+    // Check if test is used in any assignment
+    const assignments = await this.assignmentsRepository.find({
+      where: { testId: id },
+      take: 1,
+    });
+
+    if (assignments.length > 0) {
+      throw new BadRequestException('Cannot delete test that has been assigned to patients');
+    }
 
     await this.testsRepository.update(id, { isActive: false });
   }

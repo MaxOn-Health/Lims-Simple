@@ -7,7 +7,7 @@ import { testsService } from '@/services/api/tests.service';
 import { resultsService } from '@/services/api/results.service';
 import { Assignment, AssignmentStatus } from '@/types/assignment.types';
 import { Test } from '@/types/test.types';
-import { SubmitResultRequest } from '@/types/result.types';
+import { SubmitResultRequest, UpdateResultRequest } from '@/types/result.types';
 import { DynamicResultForm } from '../DynamicResultForm/DynamicResultForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState } from '@/components/common/ErrorState/ErrorState';
@@ -76,11 +76,11 @@ export const ResultEntryForm: React.FC = () => {
     fetchData();
   }, [assignmentId]);
 
-  const handleSubmit = async (data: SubmitResultRequest) => {
-    if (!assignmentId) {
+  const handleSubmit = async (data: SubmitResultRequest | UpdateResultRequest) => {
+    if (!assignment) {
       addToast({
         type: 'error',
-        message: 'Assignment ID is required',
+        message: 'Assignment data is missing',
       });
       return;
     }
@@ -90,7 +90,7 @@ export const ResultEntryForm: React.FC = () => {
       await resultsService.submitResult({
         ...data,
         assignmentId,
-      });
+      } as SubmitResultRequest);
 
       addToast({
         type: 'success',
@@ -145,94 +145,100 @@ export const ResultEntryForm: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+    <div className="space-y-6 max-w-[1600px] mx-auto pb-20">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2 text-gray-900">
           <FileText className="h-8 w-8 text-primary" />
-          Submit Test Result
+          Enter Test Results
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Enter test results for {test.name}
+        <p className="text-muted-foreground text-lg">
+          Record findings for the assigned test.
         </p>
       </div>
-
-      {/* Patient Information - Prominent */}
-      {assignment.patient && (
-        <Card className="border-primary/20 bg-primary/5">
-        <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5 text-primary" />
-              Patient Information
-            </CardTitle>
-        </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-primary/10">
-                <User className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-foreground">
-                  {assignment.patient.name}
-                </p>
-                <p className="text-sm text-muted-foreground font-mono mt-0.5">
-                  {assignment.patient.patientId}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Test Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FlaskConical className="h-5 w-5 text-primary" />
-            Test Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-            <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <FlaskConical className="h-5 w-5 text-primary" />
-            </div>
-              <div>
-              <p className="text-sm font-medium text-muted-foreground">Test Name</p>
-                <p className="text-base font-semibold">{test.name}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Status Warning */}
       {assignment.status !== AssignmentStatus.IN_PROGRESS &&
         assignment.status !== AssignmentStatus.ASSIGNED && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Cannot submit results. Assignment must be IN_PROGRESS or ASSIGNED. Current status:{' '}
-            {assignment.status}
-          </AlertDescription>
-        </Alert>
-      )}
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Cannot submit results. Assignment must be IN_PROGRESS or ASSIGNED. Current status:{' '}
+              {assignment.status}
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {/* Result Entry Form */}
-      {(assignment.status === AssignmentStatus.IN_PROGRESS || assignment.status === AssignmentStatus.ASSIGNED) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Result Values</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DynamicResultForm
-              test={test}
-              onSubmit={handleSubmit}
-              onCancel={handleCancel}
-              mode="create"
-              isSubmitting={isSubmitting}
-            />
-          </CardContent>
-        </Card>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Left Column: Context (Sticky) */}
+        <div className="lg:col-span-1 sticky top-6 space-y-6">
+          {/* Patient Card */}
+          {assignment.patient && (
+            <Card className="border-none shadow-md bg-blue-50/50 border-blue-100">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-blue-600 uppercase tracking-wider flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Patient Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  <p className="text-xl font-bold text-blue-900">
+                    {assignment.patient.name}
+                  </p>
+                  <p className="text-sm text-blue-700 font-mono">
+                    ID: {assignment.patient.patientId}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Test Card */}
+          <Card className="border-none shadow-md">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <FlaskConical className="h-4 w-4" />
+                Test Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                <p className="text-lg font-semibold text-gray-900">
+                  {test.name}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {test.description || 'No description available.'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: Data Entry Form */}
+        <div className="lg:col-span-2">
+          {(assignment.status === AssignmentStatus.IN_PROGRESS || assignment.status === AssignmentStatus.ASSIGNED) && (
+            <Card className="border-none shadow-lg ring-1 ring-black/5">
+              <CardHeader className="bg-gray-50 border-b pb-4">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  Result Values
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Please enter the observed values carefully.
+                </p>
+              </CardHeader>
+              <CardContent className="p-6">
+                <DynamicResultForm
+                  test={test}
+                  onSubmit={handleSubmit}
+                  onCancel={handleCancel}
+                  mode="create"
+                  isSubmitting={isSubmitting}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

@@ -45,21 +45,24 @@ print_result 0 "Admin login successful"
 echo ""
 
 # Step 2: Create a Lab Technician user
-echo "Step 2: Create Lab Technician user..."
+TIMESTAMP=$(date +%s)
+LAB_TECH_EMAIL="labtech_${TIMESTAMP}@lims.com"
+
+echo "Step 2: Create Lab Technician user ($LAB_TECH_EMAIL)..."
 LAB_TECH_RESPONSE=$(curl -s -X POST "$BASE_URL/users" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{
-    "email": "labtech@lims.com",
-    "password": "LabTech@123",
-    "fullName": "Lab Technician",
-    "role": "LAB_TECHNICIAN",
-    "testAdminType": "blood_test"
-  }')
+  -d "{
+    \"email\": \"$LAB_TECH_EMAIL\",
+    \"password\": \"LabTech@123\",
+    \"fullName\": \"Lab Technician\",
+    \"role\": \"LAB_TECHNICIAN\"
+  }")
 
 LAB_TECH_ID=$(echo $LAB_TECH_RESPONSE | grep -o '"id":"[^"]*' | cut -d'"' -f4)
 
 if [ -z "$LAB_TECH_ID" ]; then
+    echo "Response: $LAB_TECH_RESPONSE"
     echo -e "${YELLOW}Lab tech might already exist, trying to login...${NC}"
 else
     print_result 0 "Lab Technician created"
@@ -69,7 +72,7 @@ fi
 echo "Step 3: Login as Lab Technician..."
 LAB_TECH_LOGIN=$(curl -s -X POST "$BASE_URL/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"labtech@lims.com","password":"LabTech@123"}')
+  -d "{\"email\":\"$LAB_TECH_EMAIL\",\"password\":\"LabTech@123\"}")
 
 LAB_TECH_TOKEN=$(echo $LAB_TECH_LOGIN | grep -o '"accessToken":"[^"]*' | cut -d'"' -f4)
 

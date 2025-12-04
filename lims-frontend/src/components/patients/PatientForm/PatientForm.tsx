@@ -84,8 +84,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         console.error('Failed to fetch tests for patient form:', apiError);
         console.error('Error details:', {
           message: getErrorMessage(apiError),
-          status: apiError?.response?.status,
-          data: apiError?.response?.data,
+          // status: apiError?.statusCode, // using statusCode from ApiError interface if available
         });
         addToast({
           type: 'error',
@@ -129,7 +128,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       const project = projects.find((p) => p.id === selectedProjectId);
       if (project) {
         setSelectedProject(project);
-        
+
         // Auto-populate company name if not already set
         const currentCompanyName = watch('companyName');
         if (!currentCompanyName && project.companyName) {
@@ -156,7 +155,7 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     return tests.filter((test) => selectedAddonTestIds.includes(test.id));
   }, [tests, selectedAddonTestIds]);
 
-  const packagePrice = selectedPackage?.price || 0;
+  const packagePrice = Number(selectedPackage?.price || 0);
   const testsTotal = useMemo(() => {
     // Note: Tests don't have individual prices in the current schema
     // The backend calculates test prices separately
@@ -209,396 +208,351 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* Personal Information Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Input
-              id="name"
-              label="Full Name"
-              placeholder="Enter patient name"
-              required
-              error={errors.name?.message}
-              {...register('name')}
-            />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Patient Details (2/3 width) */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Personal Information Section */}
+          <Card className="border-none shadow-md">
+            <CardHeader className="bg-gray-50/50 border-b pb-4">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <div>
+                  <CardTitle className="text-lg font-semibold text-gray-800">Patient Details</CardTitle>
+                  <p className="text-sm text-muted-foreground">Basic personal information required for registration</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div>
+                <Input
+                  id="name"
+                  label="Full Name *"
+                  placeholder="e.g. John Doe"
+                  className="h-11"
+                  error={errors.name?.message}
+                  {...register('name')}
+                />
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Input
-                id="age"
-                type="number"
-                label="Age"
-                placeholder="Enter age"
-                required
-                error={errors.age?.message}
-                {...register('age', { valueAsNumber: true })}
-              />
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Input
+                    id="age"
+                    type="number"
+                    label="Age *"
+                    placeholder="e.g. 32"
+                    className="h-11"
+                    error={errors.age?.message}
+                    {...register('age', { valueAsNumber: true })}
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="gender">Gender *</Label>
-              <Controller
-                name="gender"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="gender">
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={Gender.MALE}>Male</SelectItem>
-                      <SelectItem value={Gender.FEMALE}>Female</SelectItem>
-                      <SelectItem value={Gender.OTHER}>Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-2">
+                  <Label htmlFor="gender" className="text-sm font-medium text-gray-700">Gender *</Label>
+                  <Controller
+                    name="gender"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="gender" className="h-11">
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={Gender.MALE}>Male</SelectItem>
+                          <SelectItem value={Gender.FEMALE}>Female</SelectItem>
+                          <SelectItem value={Gender.OTHER}>Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.gender && (
+                    <p className="text-sm font-medium text-destructive">{errors.gender.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Input
+                    id="contactNumber"
+                    label="Phone Number *"
+                    placeholder="e.g. 9876543210"
+                    className="h-11"
+                    error={errors.contactNumber?.message}
+                    {...register('contactNumber')}
+                  />
+                </div>
+
+                <div>
+                  <Input
+                    id="email"
+                    type="email"
+                    label="Email Address"
+                    placeholder="e.g. john@example.com"
+                    className="h-11"
+                    error={errors.email?.message}
+                    {...register('email')}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="address" className="text-sm font-medium text-gray-700">Address</Label>
+                <Textarea
+                  id="address"
+                  placeholder="Enter full address"
+                  className="mt-2 resize-none"
+                  rows={3}
+                  {...register('address')}
+                />
+                {errors.address && (
+                  <p className="mt-1 text-sm font-medium text-destructive">{errors.address.message}</p>
                 )}
-              />
-              {errors.gender && (
-                <p className="text-sm font-medium text-destructive">{errors.gender.message}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Employment & Project Info */}
+          <Card className="border-none shadow-md">
+            <CardHeader className="bg-gray-50/50 border-b pb-4">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-1 bg-blue-500 rounded-full" />
+                <div>
+                  <CardTitle className="text-lg font-semibold text-gray-800">Employment & Project</CardTitle>
+                  <p className="text-sm text-muted-foreground">Optional details for corporate or camp patients</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              {/* Project Selection (for Receptionists) */}
+              {user?.role === UserRole.RECEPTIONIST && (
+                <div className="space-y-2">
+                  <Label htmlFor="projectId" className="text-sm font-medium text-gray-700">Project / Camp</Label>
+                  <Controller
+                    name="projectId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value || 'all'}
+                        onValueChange={(value) => field.onChange(value === 'all' ? undefined : value)}
+                        disabled={isLoadingProjects}
+                      >
+                        <SelectTrigger id="projectId" className="h-11 bg-blue-50/50 border-blue-100">
+                          <SelectValue placeholder="Select a project (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">None (Individual Patient)</SelectItem>
+                          {projects.map((project) => (
+                            <SelectItem key={project.id} value={project.id}>
+                              {project.name}
+                              {project.companyName && ` - ${project.companyName}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {selectedProject && (
+                    <div className="mt-2 p-3 rounded-lg bg-blue-50 text-blue-800 text-sm border border-blue-100">
+                      <p className="font-medium flex items-center gap-2">
+                        <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                        {selectedProject.name}
+                      </p>
+                      {selectedProject.campSettings?.requireEmployeeId && (
+                        <p className="mt-1 text-orange-700 font-medium ml-4">
+                          • Employee ID is required
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
-            </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Input
-                id="contactNumber"
-                label="Contact Number"
-                placeholder="Enter contact number"
-                required
-                error={errors.contactNumber?.message}
-                {...register('contactNumber')}
-              />
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Input
+                    id="employeeId"
+                    label={selectedProject?.campSettings?.requireEmployeeId ? "Employee ID *" : "Employee ID"}
+                    placeholder="e.g. EMP001"
+                    className="h-11"
+                    error={errors.employeeId?.message}
+                    {...register('employeeId')}
+                  />
+                </div>
 
-            <div>
-              <Input
-                id="email"
-                type="email"
-                label="Email"
-                placeholder="Enter email (optional)"
-                error={errors.email?.message}
-                {...register('email')}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Input
-                id="employeeId"
-                label="Employee ID"
-                placeholder="Enter employee ID (optional)"
-                error={errors.employeeId?.message}
-                {...register('employeeId')}
-              />
-            </div>
-
-          <div>
-            <Input
-              id="companyName"
-              label="Company Name"
-              placeholder="Enter company name (optional)"
-              error={errors.companyName?.message}
-              {...register('companyName')}
-              disabled={!!selectedProject?.companyName}
-            />
-            {selectedProject?.companyName && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Auto-filled from project
-              </p>
-            )}
-          </div>
+                <div>
+                  <Input
+                    id="companyName"
+                    label="Company Name"
+                    placeholder="e.g. Tech Corp"
+                    className="h-11"
+                    error={errors.companyName?.message}
+                    {...register('companyName')}
+                    disabled={!!selectedProject?.companyName}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Project Selection (for Receptionists) */}
-        {user?.role === UserRole.RECEPTIONIST && (
-          <div className="space-y-2">
-            <Label htmlFor="projectId">Project (Optional)</Label>
-            <Controller
-              name="projectId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value || 'all'}
-                  onValueChange={(value) => field.onChange(value === 'all' ? undefined : value)}
-                  disabled={isLoadingProjects}
-                >
-                  <SelectTrigger id="projectId">
-                    <SelectValue placeholder="Select a project (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">None</SelectItem>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                        {project.companyName && ` - ${project.companyName}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.projectId && (
-              <p className="text-sm font-medium text-destructive">{errors.projectId.message}</p>
-            )}
-            {selectedProject && (
-              <div className="mt-2 p-3 rounded-lg bg-muted/50 space-y-1 text-sm">
-                <p className="font-medium">{selectedProject.name}</p>
-                {selectedProject.campSettings?.requireEmployeeId && (
-                  <p className="text-orange-600">
-                    ⚠️ Employee ID is required for this project
-                  </p>
-                )}
-                {selectedProject.campSettings?.patientIdPrefix && (
-                  <p className="text-muted-foreground">
-                    Patient IDs will be prefixed with: {selectedProject.campSettings.patientIdPrefix}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Employee ID requirement warning */}
-        {selectedProject?.campSettings?.requireEmployeeId && !watch('employeeId') && (
-          <div className="p-3 rounded-lg bg-orange-50 border border-orange-200">
-            <p className="text-sm text-orange-800 font-medium">
-              ⚠️ Employee ID is required for this project
-            </p>
-          </div>
-        )}
-
-          <div>
-            <Label htmlFor="address">Address</Label>
-            <Textarea
-              id="address"
-              placeholder="Enter address (optional)"
-              rows={3}
-              {...register('address')}
-            />
-            {errors.address && (
-              <p className="mt-1 text-sm font-medium text-destructive">{errors.address.message}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Package Selection Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Package Selection (Optional)</CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">
-            Select a package OR choose individual tests below. At least one test must be selected.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="packageId">Package</Label>
-            <Controller
-              name="packageId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value || 'none'}
-                  onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)}
-                  disabled={isLoadingPackages}
-                >
-                  <SelectTrigger id="packageId">
-                    <SelectValue placeholder="Select a package (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None - Select individual tests</SelectItem>
-                    {packages.map((pkg) => (
-                      <SelectItem key={pkg.id} value={pkg.id}>
-                        {pkg.name} - ₹{Number(pkg.price).toFixed(2)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.packageId && (
-              <p className="text-sm font-medium text-destructive">{errors.packageId.message}</p>
-            )}
-          </div>
-
-          {selectedPackage && (
-            <div className="p-4 rounded-lg bg-muted/50 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Package Price</span>
-                <div className="flex items-baseline gap-1">
-                  <IndianRupee className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-lg font-bold text-foreground">
-                    {Number(selectedPackage.price).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <p>Validity: {selectedPackage.validityDays} days</p>
-                {selectedPackage.description && (
-                  <p className="mt-1">{selectedPackage.description}</p>
-                )}
-                {selectedPackage.tests && selectedPackage.tests.length > 0 && (
-                  <p className="mt-1">
-                    Includes {selectedPackage.tests.length} test{selectedPackage.tests.length !== 1 ? 's' : ''}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Tests Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {selectedPackageId ? 'Addon Tests (Optional)' : 'Tests'}
-            {!selectedPackageId && (
-              <span className="text-destructive ml-1">*</span>
-            )}
-          </CardTitle>
-          {!selectedPackageId && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Select at least one test to register the patient.
-            </p>
-          )}
-          {selectedPackageId && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Select additional tests to include with the package (optional).
-            </p>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoadingTests ? (
-            <p className="text-sm text-muted-foreground">Loading tests...</p>
-          ) : tests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tests available</p>
-          ) : (
-            <div className="space-y-3 max-h-64 overflow-y-auto border rounded-md p-4">
-              {tests.map((test) => (
-                <div key={test.id} className="flex items-start space-x-3">
+        {/* Right Column: Tests & Payment (1/3 width) */}
+        <div className="space-y-6">
+          <div className="sticky top-6 space-y-6">
+            {/* Test Selection Card */}
+            <Card className="border-none shadow-md border-t-4 border-t-primary">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-semibold text-gray-800">Test Selection</CardTitle>
+                <p className="text-sm text-muted-foreground">Choose a package or individual tests</p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Package Dropdown */}
+                <div className="space-y-2">
+                  <Label htmlFor="packageId" className="text-sm font-medium text-gray-700">Select Package</Label>
                   <Controller
-                    name="addonTestIds"
+                    name="packageId"
                     control={control}
-                    render={({ field }) => {
-                      const isChecked = field.value?.includes(test.id) || false;
-                      return (
-                        <Checkbox
-                          checked={isChecked}
-                          onCheckedChange={(checked) => {
-                            const currentIds = field.value || [];
-                            if (checked) {
-                              field.onChange([...currentIds, test.id]);
-                            } else {
-                              field.onChange(currentIds.filter((id) => id !== test.id));
-                            }
-                          }}
-                        />
-                      );
-                    }}
-                  />
-                  <div className="flex-1">
-                    <Label htmlFor={test.id} className="font-medium cursor-pointer">
-                      {test.name}
-                    </Label>
-                    {test.description && (
-                      <p className="text-sm text-muted-foreground mt-1">{test.description}</p>
+                    render={({ field }) => (
+                      <Select
+                        value={field.value || 'none'}
+                        onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)}
+                        disabled={isLoadingPackages}
+                      >
+                        <SelectTrigger id="packageId" className="h-11">
+                          <SelectValue placeholder="Select a package..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No Package</SelectItem>
+                          {packages.map((pkg) => (
+                            <SelectItem key={pkg.id} value={pkg.id}>
+                              {pkg.name} - ₹{Number(pkg.price).toFixed(2)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
+                  />
+                </div>
+
+                {selectedPackage && (
+                  <div className="p-3 rounded-lg bg-green-50 border border-green-100 text-sm">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-green-900">{selectedPackage.name}</span>
+                      <span className="font-bold text-green-700">₹{Number(selectedPackage.price).toFixed(2)}</span>
+                    </div>
+                    <p className="text-green-700 text-xs">Includes {selectedPackage.tests?.length || 0} tests</p>
+                  </div>
+                )}
+
+                <Separator />
+
+                {/* Individual Tests */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium text-gray-700">
+                    {selectedPackageId ? 'Add Extra Tests' : 'Select Tests *'}
+                  </Label>
+
+                  {isLoadingTests ? (
+                    <div className="text-center py-4 text-muted-foreground text-sm">Loading tests...</div>
+                  ) : (
+                    <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                      {tests.map((test) => (
+                        <div
+                          key={test.id}
+                          className={`flex items-start space-x-3 p-2 rounded-md transition-colors ${watch('addonTestIds')?.includes(test.id)
+                            ? 'bg-primary-50 border border-primary-100'
+                            : 'hover:bg-gray-50 border border-transparent'
+                            }`}
+                        >
+                          <Controller
+                            name="addonTestIds"
+                            control={control}
+                            render={({ field }) => {
+                              const isChecked = field.value?.includes(test.id) || false;
+                              return (
+                                <Checkbox
+                                  id={`test-${test.id}`}
+                                  checked={isChecked}
+                                  onCheckedChange={(checked) => {
+                                    const currentIds = field.value || [];
+                                    if (checked) {
+                                      field.onChange([...currentIds, test.id]);
+                                    } else {
+                                      field.onChange(currentIds.filter((id) => id !== test.id));
+                                    }
+                                  }}
+                                  className="mt-1"
+                                />
+                              );
+                            }}
+                          />
+                          <div className="flex-1 cursor-pointer" onClick={() => {
+                            const currentIds = watch('addonTestIds') || [];
+                            const isChecked = currentIds.includes(test.id);
+                            if (!isChecked) {
+                              setValue('addonTestIds', [...currentIds, test.id]);
+                            } else {
+                              setValue('addonTestIds', currentIds.filter(id => id !== test.id));
+                            }
+                          }}>
+                            <Label htmlFor={`test-${test.id}`} className="font-medium cursor-pointer text-sm block">
+                              {test.name}
+                            </Label>
+                            {test.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-1">{test.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {errors.addonTestIds && (
+                    <p className="text-xs font-medium text-destructive">{errors.addonTestIds.message}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Price Summary & Actions */}
+            <Card className="border-none shadow-lg bg-gray-900 text-white">
+              <CardContent className="p-6 space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-gray-300 text-sm">
+                    <span>Package</span>
+                    <span>₹{packagePrice.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-300 text-sm">
+                    <span>Tests ({selectedAddonTests.length})</span>
+                    <span>₹{testsTotal.toFixed(2)}</span>
+                  </div>
+                  <Separator className="bg-gray-700" />
+                  <div className="flex justify-between items-end pt-2">
+                    <span className="text-lg font-medium">Total</span>
+                    <span className="text-3xl font-bold text-green-400">₹{grandTotal.toFixed(2)}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-          {errors.addonTestIds && (
-            <p className="text-sm font-medium text-destructive">{errors.addonTestIds.message}</p>
-          )}
-          {errors.root?.message && (
-            <p className="text-sm font-medium text-destructive">{errors.root.message}</p>
-          )}
 
-          {selectedAddonTests.length > 0 && (
-            <div className="p-4 rounded-lg bg-muted/50">
-              <p className="text-sm font-medium text-muted-foreground mb-2">Selected Tests:</p>
-              <ul className="list-disc list-inside space-y-1">
-                {selectedAddonTests.map((test) => (
-                  <li key={test.id} className="text-sm text-foreground">
-                    {test.name}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <Button
+                  type="submit"
+                  className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold h-12 text-lg shadow-lg shadow-green-900/20"
+                  isLoading={isSubmitting}
+                >
+                  Register Patient
+                </Button>
 
-      {/* Price Summary Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Price Summary</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            {selectedPackageId && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Package Price</span>
-                <div className="flex items-baseline gap-1">
-                  <IndianRupee className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">
-                    {packagePrice.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {selectedAddonTests.length > 0 && (
-              <>
-                {selectedPackageId && <Separator />}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {selectedPackageId ? 'Addon Tests' : 'Tests'} ({selectedAddonTests.length})
-                  </span>
-                  <div className="flex items-baseline gap-1">
-                    <IndianRupee className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium text-foreground">
-                      {testsTotal.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
-
-            <Separator />
-
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold text-foreground">Grand Total</span>
-              <div className="flex items-baseline gap-1">
-                <IndianRupee className="h-5 w-5 text-primary" />
-                <span className="text-2xl font-bold text-primary">{grandTotal.toFixed(2)}</span>
-              </div>
-            </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full text-gray-400 hover:text-white hover:bg-gray-800"
+                  onClick={() => router.back()}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Form Actions */}
-      <div className="flex justify-end gap-3 pt-4 border-t">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-          disabled={isSubmitting}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" variant="primary" isLoading={isSubmitting}>
-          Register Patient
-        </Button>
+        </div>
       </div>
     </form>
   );

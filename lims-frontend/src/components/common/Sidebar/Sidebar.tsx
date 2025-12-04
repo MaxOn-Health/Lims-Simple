@@ -35,7 +35,7 @@ const navigation: NavItem[] = [
     allowedRoles: [UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN, UserRole.DOCTOR],
   },
   {
-    name: 'Patient Progress',
+    name: 'Track Status',
     href: '/patients/progress',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,7 +45,7 @@ const navigation: NavItem[] = [
     allowedRoles: [UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN],
   },
   {
-    name: 'Test Orders',
+    name: 'Pending Tests',
     href: '/assignments',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,7 +54,7 @@ const navigation: NavItem[] = [
     ),
   },
   {
-    name: 'My Assignments',
+    name: 'My Tasks',
     href: '/assignments/my-assignments',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -64,7 +64,7 @@ const navigation: NavItem[] = [
     allowedRoles: [UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN],
   },
   {
-    name: 'Test Results',
+    name: 'Completed Results',
     href: '/results',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,7 +73,7 @@ const navigation: NavItem[] = [
     ),
   },
   {
-    name: 'Register Sample',
+    name: 'New Sample',
     href: '/blood-samples/register',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,7 +93,7 @@ const navigation: NavItem[] = [
     allowedRoles: [UserRole.LAB_TECHNICIAN],
   },
   {
-    name: 'Access Sample',
+    name: 'Find Sample',
     href: '/blood-samples/access',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +103,7 @@ const navigation: NavItem[] = [
     allowedRoles: [UserRole.LAB_TECHNICIAN],
   },
   {
-    name: 'All Samples',
+    name: 'Sample History',
     href: '/blood-samples',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,7 +123,7 @@ const navigation: NavItem[] = [
     allowedRoles: [UserRole.DOCTOR],
   },
   {
-    name: 'Signed Reports',
+    name: 'Final Reports',
     href: '/doctor/signed-reports',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,18 +243,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
         <nav className="mt-5 flex-1 px-2 space-y-1">
           {navigation.map((item) => {
             const active = isActive(item.href);
-            
+
             if (item.allowedRoles) {
               return (
                 <HasRole key={item.name} allowedRoles={item.allowedRoles}>
                   <Link
                     href={item.href}
                     onClick={handleClick}
-                    className={`group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md ${
-                      active
+                    className={`group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md ${active
                         ? 'bg-primary-50 text-primary-900'
                         : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center">
                       <span className="mr-3 flex-shrink-0">{item.icon}</span>
@@ -274,11 +273,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onNavigate }) => {
                 key={item.name}
                 href={item.href}
                 onClick={handleClick}
-                className={`group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md ${
-                  active
+                className={`group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md ${active
                     ? 'bg-primary-50 text-primary-900'
                     : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                  }`}
               >
                 <div className="flex items-center">
                   <span className="mr-3 flex-shrink-0">{item.icon}</span>

@@ -21,10 +21,12 @@ export const PasskeySetup: React.FC = () => {
 
   useEffect(() => {
     // Check if user has passkey set up
-    // In a real implementation, you'd check user.passkeyCredentialId or call an API
-    // For now, we'll assume it's stored in user object or we need to check via API
+    if (user?.passkeyCredentialId) {
+      setHasPasskey(true);
+    } else {
+      setHasPasskey(false);
+    }
     setIsChecking(false);
-    // TODO: Check if user has passkey from user object or API
   }, [user]);
 
   const handleSetupPasskey = async () => {
@@ -40,17 +42,17 @@ export const PasskeySetup: React.FC = () => {
     try {
       // Step 1: Get challenge from backend
       const challengeResponse = await passkeyService.setupPasskey();
-      
+
       // Step 2: Create passkey using WebAuthn
       const credential = await createPasskey(challengeResponse.options);
-      
+
       // Step 3: Verify and store passkey
       await passkeyService.verifyPasskeySetup(
         challengeResponse.challengeId,
         credential,
         challengeResponse.options.challenge
       );
-      
+
       setHasPasskey(true);
       addToast({
         type: 'success',
@@ -58,10 +60,10 @@ export const PasskeySetup: React.FC = () => {
       });
     } catch (err: any) {
       const apiError = err as ApiError;
-      const errorMessage = err.name === 'WebAuthnError' 
+      const errorMessage = err.name === 'WebAuthnError'
         ? getWebAuthnErrorMessage(err)
         : getErrorMessage(apiError) || 'Failed to set up passkey';
-      
+
       addToast({
         type: 'error',
         message: errorMessage,
@@ -167,7 +169,7 @@ export const PasskeySetup: React.FC = () => {
             </div>
 
             <Button
-              variant="default"
+              variant="primary"
               onClick={handleSetupPasskey}
               disabled={isSettingUp || !isWebAuthnSupported()}
               className="gap-2 w-full sm:w-auto"

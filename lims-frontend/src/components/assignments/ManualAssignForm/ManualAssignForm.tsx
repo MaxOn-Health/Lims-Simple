@@ -94,33 +94,33 @@ export const ManualAssignForm: React.FC = () => {
     try {
       const patient = await patientsService.getPatientById(selectedPatientId);
       const patientPackage = patient.patientPackages?.[0];
-      
+
       let allTestIds: string[] = [];
-      
+
       // Get tests from package if package exists
       if (patientPackage?.packageId) {
         const packageTests = await packagesService.getPackageTests(patientPackage.packageId);
         const packageTestIds = packageTests.map((pt) => pt.testId);
         allTestIds.push(...packageTestIds);
       }
-      
+
       // Add addon/standalone tests
       const addonTestIds = patientPackage?.addonTestIds || [];
       allTestIds.push(...addonTestIds);
-      
+
       // Remove duplicates
       allTestIds = [...new Set(allTestIds)];
-      
+
       // If no tests found, set empty array and return
       if (allTestIds.length === 0) {
         setTests([]);
         return;
       }
-      
+
       // Fetch all active tests and filter to patient's tests
       const allTests = await testsService.getTests({ isActive: true });
       const patientTests = allTests.filter((test) => allTestIds.includes(test.id));
-      
+
       setTests(patientTests);
     } catch (err) {
       const apiError = err as ApiError;
@@ -174,147 +174,219 @@ export const ManualAssignForm: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+    <div className="space-y-6 max-w-[1600px] mx-auto pb-20">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2 text-gray-900">
           <UserPlus className="h-8 w-8 text-primary" />
-          Manual Assign Test
+          Assign New Test
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Manually assign a specific test to a patient and admin
+        <p className="text-muted-foreground text-lg">
+          Select a patient and assign a test to a technician.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Assignment Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="patient-search">Search Patient</Label>
-              <SearchInput
-                id="patient-search"
-                value={patientSearchQuery}
-                onChange={setPatientSearchQuery}
-                placeholder="Search by name, patient ID, or contact..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="patient-id">Patient *</Label>
-              <Controller
-                name="patientId"
-                control={control}
-                render={({ field }) => (
-                  <Select 
-                    value={field.value || ''} 
-                    onValueChange={field.onChange}
-                    disabled={isLoadingPatients}
-                  >
-                    <SelectTrigger id="patient-id">
-                      <SelectValue placeholder={isLoadingPatients ? "Loading patients..." : "Select a patient"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingPatients ? (
-                        <div className="p-2 text-sm text-muted-foreground">Loading patients...</div>
-                      ) : patients.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground">
-                          {patientSearchQuery ? "No patients found matching your search" : "No patients available"}
-                        </div>
-                      ) : (
-                        patients.map((patient) => (
-                          <SelectItem key={patient.id} value={patient.id}>
-                            {patient.name} ({patient.patientId})
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.patientId && (
-                <p className="text-sm font-medium text-destructive">
-                  {errors.patientId.message}
+      <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column: Patient Selection */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="border-none shadow-md overflow-hidden">
+            <CardHeader className="bg-primary/5 border-b border-primary/10 pb-4">
+              <CardTitle className="text-xl text-primary flex items-center gap-2">
+                1. Select Patient
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="space-y-4">
+                <Label htmlFor="patient-search" className="text-base font-medium">
+                  Find Patient
+                </Label>
+                <SearchInput
+                  value={patientSearchQuery}
+                  onChange={setPatientSearchQuery}
+                  placeholder="Search by name, ID, or phone number..."
+                  className="h-12 text-lg"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Start typing to search for a registered patient.
                 </p>
-              )}
-            </div>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="test-id">Test *</Label>
-              <Controller
-                name="testId"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value || ''}
-                    onValueChange={field.onChange}
-                    disabled={!selectedPatientId}
-                  >
-                    <SelectTrigger id="test-id">
-                      <SelectValue placeholder="Select a test" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tests.map((test) => (
-                        <SelectItem key={test.id} value={test.id}>
-                          {test.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-2">
+                <Label htmlFor="patient-id" className="text-base font-medium">
+                  Select from Results
+                </Label>
+                <Controller
+                  name="patientId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || ''}
+                      onValueChange={field.onChange}
+                      disabled={isLoadingPatients}
+                    >
+                      <SelectTrigger id="patient-id" className="h-12 text-base">
+                        <SelectValue placeholder={isLoadingPatients ? "Searching..." : "Select a patient"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingPatients ? (
+                          <div className="p-4 text-center text-muted-foreground">Loading...</div>
+                        ) : patients.length === 0 ? (
+                          <div className="p-4 text-center text-muted-foreground">
+                            {patientSearchQuery ? "No patients found." : "Type above to search."}
+                          </div>
+                        ) : (
+                          patients.map((patient) => (
+                            <SelectItem key={patient.id} value={patient.id} className="py-3">
+                              <div className="flex flex-col">
+                                <span className="font-medium">{patient.name}</span>
+                                <span className="text-xs text-muted-foreground">ID: {patient.patientId}</span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.patientId && (
+                  <p className="text-sm font-medium text-destructive mt-1">
+                    {errors.patientId.message}
+                  </p>
                 )}
-              />
-              {errors.testId && (
-                <p className="text-sm font-medium text-destructive">
-                  {errors.testId.message}
-                </p>
-              )}
-            </div>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="admin-id">Admin (Optional - leave empty for auto-assign)</Label>
-              <Controller
-                name="adminId"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value || undefined}
-                    onValueChange={(value) => field.onChange(value || undefined)}
-                    disabled={!selectedTestId}
+              {/* Selected Patient Summary Card */}
+              {selectedPatientId && (
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-100 animate-in fade-in slide-in-from-top-2">
+                  <h3 className="font-semibold text-blue-900 mb-2">Selected Patient</h3>
+                  {patients.find(p => p.id === selectedPatientId) && (
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-blue-600 block text-xs uppercase tracking-wider">Name</span>
+                        <span className="font-medium text-blue-950 text-lg">
+                          {patients.find(p => p.id === selectedPatientId)?.name}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-blue-600 block text-xs uppercase tracking-wider">ID</span>
+                        <span className="font-medium text-blue-950">
+                          {patients.find(p => p.id === selectedPatientId)?.patientId}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: Test & Technician (Sticky) */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-6 space-y-6">
+            <Card className="border-none shadow-lg ring-1 ring-black/5">
+              <CardHeader className="bg-gray-50 border-b pb-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  2. Assign Test
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                {/* Test Selection */}
+                <div className="space-y-3">
+                  <Label htmlFor="test-id" className="font-medium">Select Test *</Label>
+                  <Controller
+                    name="testId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value || ''}
+                        onValueChange={field.onChange}
+                        disabled={!selectedPatientId}
+                      >
+                        <SelectTrigger id="test-id" className="h-11">
+                          <SelectValue placeholder="Choose test..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tests.length === 0 ? (
+                            <div className="p-3 text-sm text-muted-foreground text-center">
+                              No tests available for this patient.
+                            </div>
+                          ) : (
+                            tests.map((test) => (
+                              <SelectItem key={test.id} value={test.id}>
+                                {test.name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.testId && (
+                    <p className="text-sm font-medium text-destructive">
+                      {errors.testId.message}
+                    </p>
+                  )}
+                  {!selectedPatientId && (
+                    <p className="text-xs text-muted-foreground">
+                      Select a patient first.
+                    </p>
+                  )}
+                </div>
+
+                {/* Technician Selection */}
+                <div className="space-y-3">
+                  <Label htmlFor="admin-id" className="font-medium">Technician</Label>
+                  <Controller
+                    name="adminId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value || undefined}
+                        onValueChange={(value) => field.onChange(value || undefined)}
+                        disabled={!selectedTestId}
+                      >
+                        <SelectTrigger id="admin-id" className="h-11">
+                          <SelectValue placeholder="Auto-assign (Optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {admins.map((admin) => (
+                            <SelectItem key={admin.id} value={admin.id}>
+                              {admin.fullName || admin.email}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave empty to auto-assign to next available technician.
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-4 space-y-3">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    isLoading={isSubmitting}
+                    className="w-full h-12 text-base shadow-lg shadow-primary/20"
+                    disabled={!selectedPatientId || !selectedTestId}
                   >
-                    <SelectTrigger id="admin-id">
-                      <SelectValue placeholder="Select an admin (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {admins.map((admin) => (
-                        <SelectItem key={admin.id} value={admin.id}>
-                          {admin.fullName || admin.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.adminId && (
-                <p className="text-sm font-medium text-destructive">
-                  {errors.adminId.message}
-                </p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Leave empty to automatically assign to an available admin
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex gap-3">
-          <Button type="submit" variant="primary" isLoading={isSubmitting}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Create Assignment
-          </Button>
-          <Button type="button" variant="outline" onClick={() => router.back()}>
-            Cancel
-          </Button>
+                    <UserPlus className="mr-2 h-5 w-5" />
+                    Confirm Assignment
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.back()}
+                    className="w-full"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </form>
     </div>

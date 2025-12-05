@@ -1,174 +1,231 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/guards/ProtectedRoute/ProtectedRoute';
 import { MainLayout } from '@/components/layouts/MainLayout/MainLayout';
 import { useAuthStore } from '@/store/auth.store';
-import { UserRole } from '@/types/user.types';
-import { HasRole } from '@/components/common/HasRole/HasRole';
+import { dashboardService, DashboardResponse } from '@/services/api/dashboard.service';
+import { Skeleton } from '@/components/common/Skeleton';
 import Link from 'next/link';
-import { Button } from '@/components/common/Button/Button';
+import {
+  Users,
+  FlaskConical,
+  CheckCircle2,
+  FileText,
+  CreditCard,
+  TrendingUp,
+  ArrowRight
+} from 'lucide-react';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const [data, setData] = useState<DashboardResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const response = await dashboardService.getStats();
+        setData(response);
+      } catch (err) {
+        setError('Failed to load dashboard stats');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  const statCards = data ? [
+    {
+      label: 'Patients Today',
+      value: data.stats.patientsToday,
+      icon: Users,
+      color: 'bg-blue-500',
+      trend: `${data.stats.patientsThisWeek} this week`,
+    },
+    {
+      label: 'Pending Tests',
+      value: data.stats.pendingTests,
+      icon: FlaskConical,
+      color: 'bg-yellow-500',
+    },
+    {
+      label: 'Results Completed',
+      value: data.stats.completedResults,
+      icon: CheckCircle2,
+      color: 'bg-green-500',
+      trend: 'Today',
+    },
+    {
+      label: 'Reports to Review',
+      value: data.stats.reportsAwaitingReview,
+      icon: FileText,
+      color: 'bg-purple-500',
+    },
+    {
+      label: 'Payments Pending',
+      value: data.stats.paymentsPending,
+      icon: CreditCard,
+      color: 'bg-red-500',
+    },
+  ] : [];
 
   return (
     <ProtectedRoute>
       <MainLayout>
-        <div className="space-y-6">
+        <div className="space-y-8">
+          {/* Header */}
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Welcome back, {user?.fullName}
+              Welcome back, {user?.fullName} 👋
             </p>
           </div>
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Total Users
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        —
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
+          {/* Stats Grid */}
+          {loading ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} height="h-28" />
+              ))}
             </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Total Tests
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        —
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
+          ) : error ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-600">{error}</p>
             </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {statCards.map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div
+                    key={stat.label}
+                    className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+                        <p className="mt-1 text-3xl font-bold text-gray-900">{stat.value}</p>
+                        {stat.trend && (
+                          <p className="mt-1 text-xs text-gray-400 flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" />
+                            {stat.trend}
+                          </p>
+                        )}
+                      </div>
+                      <div className={`${stat.color} p-3 rounded-lg`}>
+                        <Icon className="w-6 h-6 text-white" />
+                      </div>
+                    </div>
                   </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Pending Results
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900">
-                        —
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
+                );
+              })}
             </div>
-          </div>
+          )}
 
           {/* Quick Actions */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                Quick Actions
-              </h3>
+          {data && data.quickActions.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <HasRole allowedRoles={[UserRole.SUPER_ADMIN]}>
-                  <Link href="/users/new">
-                    <div className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500 cursor-pointer">
-                      <div className="flex-shrink-0">
-                        <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="absolute inset-0" aria-hidden="true" />
-                        <p className="text-sm font-medium text-gray-900">Create User</p>
-                        <p className="text-sm text-gray-500 truncate">Add a new user to the system</p>
-                      </div>
+                {data.quickActions.map((action) => (
+                  <Link
+                    key={action.href}
+                    href={action.href}
+                    className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50/50 transition-all group"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900 group-hover:text-primary-700">
+                        {action.label}
+                      </p>
+                      <p className="text-sm text-gray-500">{action.description}</p>
                     </div>
+                    <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-primary-600 group-hover:translate-x-1 transition-all" />
                   </Link>
-                </HasRole>
-
-                <HasRole allowedRoles={[UserRole.SUPER_ADMIN]}>
-                  <Link href="/users">
-                    <div className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500 cursor-pointer">
-                      <div className="flex-shrink-0">
-                        <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="absolute inset-0" aria-hidden="true" />
-                        <p className="text-sm font-medium text-gray-900">Manage Users</p>
-                        <p className="text-sm text-gray-500 truncate">View and manage all users</p>
-                      </div>
-                    </div>
-                  </Link>
-                </HasRole>
+                ))}
               </div>
             </div>
-          </div>
+          )}
 
-          {/* User Info Card */}
-          {user && (
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                  Your Profile
-                </h3>
-                <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{user.fullName}</dd>
+          {/* Role-specific Stats */}
+          {data && Object.keys(data.roleStats).length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Activity</h2>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {data.roleStats.registrationsToday !== undefined && (
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <p className="text-2xl font-bold text-blue-600">{data.roleStats.registrationsToday}</p>
+                    <p className="text-sm text-blue-600/70">Registered Today</p>
                   </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Email</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{user.email}</dd>
+                )}
+                {data.roleStats.pendingPayments !== undefined && (
+                  <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                    <p className="text-2xl font-bold text-yellow-600">{data.roleStats.pendingPayments}</p>
+                    <p className="text-sm text-yellow-600/70">Pending Payments</p>
                   </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Role</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{user.role}</dd>
+                )}
+                {data.roleStats.myPendingTasks !== undefined && (
+                  <div className="text-center p-4 bg-orange-50 rounded-lg">
+                    <p className="text-2xl font-bold text-orange-600">{data.roleStats.myPendingTasks}</p>
+                    <p className="text-sm text-orange-600/70">My Pending Tasks</p>
                   </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">Status</dt>
-                    <dd className="mt-1">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        user.isActive !== false
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {user.isActive !== false ? 'Active' : 'Inactive'}
-                      </span>
-                    </dd>
+                )}
+                {data.roleStats.myCompletedToday !== undefined && (
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <p className="text-2xl font-bold text-green-600">{data.roleStats.myCompletedToday}</p>
+                    <p className="text-sm text-green-600/70">Completed Today</p>
                   </div>
-                </dl>
+                )}
+                {data.roleStats.reportsToReview !== undefined && (
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <p className="text-2xl font-bold text-purple-600">{data.roleStats.reportsToReview}</p>
+                    <p className="text-sm text-purple-600/70">To Review</p>
+                  </div>
+                )}
+                {data.roleStats.reportsSigned !== undefined && (
+                  <div className="text-center p-4 bg-teal-50 rounded-lg">
+                    <p className="text-2xl font-bold text-teal-600">{data.roleStats.reportsSigned}</p>
+                    <p className="text-sm text-teal-600/70">Signed Today</p>
+                  </div>
+                )}
               </div>
+            </div>
+          )}
+
+          {/* Profile Card */}
+          {user && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Profile</h2>
+              <dl className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Full Name</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{user.fullName}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Email</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{user.email}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Role</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{user.role}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Status</dt>
+                  <dd className="mt-1">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.isActive !== false
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                      }`}>
+                      {user.isActive !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </dd>
+                </div>
+              </dl>
             </div>
           )}
         </div>
@@ -176,4 +233,3 @@ export default function DashboardPage() {
     </ProtectedRoute>
   );
 }
-

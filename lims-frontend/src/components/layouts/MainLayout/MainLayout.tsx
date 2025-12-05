@@ -1,10 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
+import { useSearchStore } from '@/store/search.store';
 import { Button } from '@/components/common/Button/Button';
 import { Sidebar } from '@/components/common/Sidebar/Sidebar';
+import { GlobalSearchModal } from '@/components/common/GlobalSearch';
+import { useGlobalSearchShortcut, getShortcutKey } from '@/hooks/useGlobalSearch';
+import { Search } from 'lucide-react';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -13,7 +17,17 @@ interface MainLayoutProps {
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const { openModal } = useSearchStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [shortcutKey, setShortcutKey] = useState('⌘K');
+
+  // Register global keyboard shortcut
+  useGlobalSearchShortcut();
+
+  // Get shortcut key on client side
+  useEffect(() => {
+    setShortcutKey(getShortcutKey());
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -22,6 +36,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Global Search Modal */}
+      <GlobalSearchModal />
+
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
         <div
@@ -32,9 +49,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       {/* Mobile sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-64 bg-white transform transition-transform duration-300 ease-in-out md:hidden ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-30 w-64 bg-white transform transition-transform duration-300 ease-in-out md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         <Sidebar onNavigate={() => setSidebarOpen(false)} />
       </div>
@@ -64,8 +80,26 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </h1>
               </div>
               <div className="flex items-center space-x-4">
+                {/* Search Button */}
+                <button
+                  onClick={openModal}
+                  className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Search...</span>
+                  <kbd className="hidden md:inline-flex px-1.5 py-0.5 text-xs font-semibold bg-white border border-gray-300 rounded">
+                    {shortcutKey}
+                  </kbd>
+                </button>
+                {/* Mobile search icon */}
+                <button
+                  onClick={openModal}
+                  className="sm:hidden p-2 text-gray-500 hover:text-gray-900 rounded-lg"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
                 {user && (
-                  <span className="text-sm text-gray-700">
+                  <span className="hidden sm:inline text-sm text-gray-700">
                     {user.fullName} ({user.role})
                   </span>
                 )}
@@ -89,4 +123,5 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     </div>
   );
 };
+
 

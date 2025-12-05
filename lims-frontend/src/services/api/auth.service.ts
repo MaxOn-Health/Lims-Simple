@@ -23,5 +23,15 @@ export const authService = {
     const response = await apiClient.get<Omit<User, 'passwordHash'>>('/auth/me');
     return response.data;
   },
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const response = await apiClient.post<{ message: string }>('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const response = await apiClient.post<{ message: string }>('/auth/reset-password', { token, newPassword });
+    return response.data;
+  },
 };
 

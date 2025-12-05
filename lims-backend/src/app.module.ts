@@ -21,6 +21,7 @@ import { BloodSamplesModule } from './modules/blood-samples/blood-samples.module
 import { DoctorReviewsModule } from './modules/doctor-reviews/doctor-reviews.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ProjectsModule } from './modules/projects/projects.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { JwtTokenService } from './common/services/jwt.service';
 import { PasswordService } from './common/services/password.service';
@@ -63,16 +64,16 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
         const dbConfig = configService.get('database');
         const baseConfig = {
           type: 'postgres' as const,
-        synchronize: false,
-        logging: configService.get<string>('app.nodeEnv') === 'development',
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
-        migrationsRun: false,
-        migrationsTableName: 'migrations',
-        extra: {
-          max: 10,
-          connectionTimeoutMillis: 2000,
-        },
+          synchronize: false,
+          logging: configService.get<string>('app.nodeEnv') === 'development',
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
+          migrationsRun: false,
+          migrationsTableName: 'migrations',
+          extra: {
+            max: 10,
+            connectionTimeoutMillis: 2000,
+          },
         };
 
         // If DATABASE_URL is provided, use url; otherwise use individual properties
@@ -97,18 +98,19 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
       },
       inject: [ConfigService],
     }),
-        AuthModule,
-        UsersModule,
-        PackagesModule,
-        TestsModule,
-        PatientsModule,
-        AuditModule,
-        AssignmentsModule,
-        ResultsModule,
-        BloodSamplesModule,
-        DoctorReviewsModule,
-        ReportsModule,
-        ProjectsModule,
+    AuthModule,
+    UsersModule,
+    PackagesModule,
+    TestsModule,
+    PatientsModule,
+    AuditModule,
+    AssignmentsModule,
+    ResultsModule,
+    BloodSamplesModule,
+    DoctorReviewsModule,
+    ReportsModule,
+    ProjectsModule,
+    DashboardModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -135,4 +137,4 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     },
   ],
 })
-export class AppModule {}
+export class AppModule { }

@@ -21,6 +21,8 @@ import { PasskeyService } from './services/passkey.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -35,7 +37,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly passkeyService: PasskeyService,
-  ) {}
+  ) { }
 
   @Post('login')
   @Public()
@@ -193,6 +195,45 @@ export class AuthController {
       body.credential,
       body.challenge,
     );
+  }
+
+  @Post('forgot-password')
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 requests per minute
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset email sent (if email exists)',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'If the email exists, a password reset link has been sent' },
+      },
+    },
+  })
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto): Promise<{ message: string }> {
+    return this.authService.forgotPassword(forgotPasswordDto.email);
+  }
+
+  @Post('reset-password')
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 requests per minute
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password with token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset successful',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Password has been reset successfully' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> {
+    return this.authService.resetPassword(resetPasswordDto.token, resetPasswordDto.newPassword);
   }
 }
 

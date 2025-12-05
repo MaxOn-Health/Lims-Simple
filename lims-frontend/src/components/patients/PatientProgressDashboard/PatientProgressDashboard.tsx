@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { patientsService } from '@/services/api/patients.service';
 import { PatientProgress } from '@/types/patient.types';
@@ -16,7 +16,6 @@ import { Badge } from '@/components/ui/badge';
 import { Pagination } from '@/components/common/Pagination/Pagination';
 import { Skeleton } from '@/components/common/Skeleton';
 import { Search, AlertTriangle, CheckCircle2, Clock, XCircle, Eye } from 'lucide-react';
-import { format } from 'date-fns';
 import { AssignmentStatus } from '@/types/assignment.types';
 import { BloodSampleStatus } from '@/types/blood-sample.types';
 import {
@@ -27,6 +26,135 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+
+// Memoized row component
+const PatientProgressRow = memo(({
+  patient,
+  onView
+}: {
+  patient: PatientProgress;
+  onView: (id: string) => void;
+}) => {
+  const bloodSampleBadge = useMemo(() => {
+    if (patient.bloodSampleStatus === BloodSampleStatus.COMPLETED) {
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Collected
+        </Badge>
+      );
+    }
+    if (patient.bloodSampleStatus) {
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+          <Clock className="h-3 w-3 mr-1" />
+          {patient.bloodSampleStatus}
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="destructive">
+        <XCircle className="h-3 w-3 mr-1" />
+        Not Collected
+      </Badge>
+    );
+  }, [patient.bloodSampleStatus]);
+
+  return (
+    <TableRow>
+      <TableCell className="font-mono text-sm">{patient.patientId}</TableCell>
+      <TableCell className="font-medium">{patient.name}</TableCell>
+      <TableCell>{patient.contactNumber}</TableCell>
+      <TableCell>{patient.totalTestsExpected}</TableCell>
+      <TableCell>{patient.testsAssigned}</TableCell>
+      <TableCell>{patient.testsCompleted}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all ${patient.overallProgress === 100
+                ? 'bg-green-500'
+                : patient.overallProgress >= 50
+                  ? 'bg-yellow-500'
+                  : 'bg-red-500'
+                }`}
+              style={{ width: `${patient.overallProgress}%` }}
+            />
+          </div>
+          <span className="text-sm font-medium whitespace-nowrap">
+            {patient.overallProgress}%
+          </span>
+        </div>
+      </TableCell>
+      <TableCell>{bloodSampleBadge}</TableCell>
+      <TableCell>
+        {patient.hasMissingItems ? (
+          <Badge variant="destructive">
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Pending
+          </Badge>
+        ) : (
+          <Badge className="bg-green-100 text-green-800">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Complete
+          </Badge>
+        )}
+      </TableCell>
+      <TableCell>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onView(patient.id)}
+        >
+          <Eye className="h-4 w-4 mr-1" />
+          View
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+});
+
+PatientProgressRow.displayName = 'PatientProgressRow';
+
+// Memoized stats cards
+const StatCards = memo(({ statistics }: { statistics: { total: number; withMissing: number; allCompleted: number; avgProgress: number } }) => (
+  <div className="grid gap-4 md:grid-cols-4">
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{statistics.total}</div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Pending Tests</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-orange-600">{statistics.withMissing}</div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">All Completed</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold text-green-600">{statistics.allCompleted}</div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Avg Progress</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{statistics.avgProgress}%</div>
+      </CardContent>
+    </Card>
+  </div>
+));
+
+StatCards.displayName = 'StatCards';
 
 export const PatientProgressDashboard: React.FC = () => {
   const router = useRouter();
@@ -42,7 +170,7 @@ export const PatientProgressDashboard: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
-  const fetchPatients = async (search?: string, pageNum: number = 1) => {
+  const fetchPatients = useCallback(async (search?: string, pageNum: number = 1) => {
     setIsLoading(true);
     setError(null);
 
@@ -65,17 +193,34 @@ export const PatientProgressDashboard: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [limit, addToast]);
 
   useEffect(() => {
     fetchPatients(searchQuery || undefined, page);
-  }, [page]);
+  }, [page, fetchPatients, searchQuery]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
     fetchPatients(searchQuery || undefined, 1);
-  };
+  }, [searchQuery, fetchPatients]);
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  }, []);
+
+  const handleToggleFilter = useCallback(() => {
+    setFilterMissing(prev => !prev);
+    setPage(1);
+  }, []);
+
+  const handleViewPatient = useCallback((patientId: string) => {
+    router.push(`/patients/${patientId}`);
+  }, [router]);
+
+  const handleRetry = useCallback(() => {
+    fetchPatients(searchQuery || undefined, page);
+  }, [fetchPatients, searchQuery, page]);
 
   const filteredPatients = useMemo(() => {
     if (!filterMissing) return patients;
@@ -92,94 +237,18 @@ export const PatientProgressDashboard: React.FC = () => {
       ? Math.round(allPatients.reduce((sum, p) => sum + p.overallProgress, 0) / allPatients.length)
       : 0;
 
-    return {
-      total: allPatients.length,
-      withMissing,
-      allCompleted,
-      avgProgress,
-    };
+    return { total: allPatients.length, withMissing, allCompleted, avgProgress };
   }, [filteredPatients]);
-
-  const getStatusBadge = (patient: PatientProgress, testIndex: number) => {
-    const test = patient.testProgress[testIndex];
-    if (!test) return <Badge variant="outline">N/A</Badge>;
-
-    if (test.assignmentStatus === AssignmentStatus.SUBMITTED && test.hasResult) {
-      return (
-        <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
-          <CheckCircle2 className="h-3 w-3 mr-1" />
-          Completed
-        </Badge>
-      );
-    }
-
-    if (test.assignmentStatus && test.assignmentStatus !== AssignmentStatus.PENDING) {
-      return (
-        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
-          <Clock className="h-3 w-3 mr-1" />
-          In Progress
-        </Badge>
-      );
-    }
-
-    if (test.assignmentId) {
-      return (
-        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
-          Assigned
-        </Badge>
-      );
-    }
-
-    return (
-      <Badge variant="destructive">
-        <XCircle className="h-3 w-3 mr-1" />
-        Not Assigned
-      </Badge>
-    );
-  };
-
-  const getBloodSampleBadge = (patient: PatientProgress) => {
-    if (patient.bloodSampleStatus === BloodSampleStatus.COMPLETED) {
-      return (
-        <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
-          <CheckCircle2 className="h-3 w-3 mr-1" />
-          Collected
-        </Badge>
-      );
-    }
-
-    if (patient.bloodSampleStatus) {
-      return (
-        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
-          <Clock className="h-3 w-3 mr-1" />
-          {patient.bloodSampleStatus}
-        </Badge>
-      );
-    }
-
-    return (
-      <Badge variant="destructive">
-        <XCircle className="h-3 w-3 mr-1" />
-        Not Collected
-      </Badge>
-    );
-  };
-
-  const handleViewPatient = (patientId: string) => {
-    router.push(`/patients/${patientId}`);
-  };
 
   if (error && !isLoading) {
     return (
       <ErrorState
         title="Failed to load patient progress"
         message={error}
-        onRetry={() => fetchPatients(searchQuery || undefined, page)}
+        onRetry={handleRetry}
       />
     );
   }
-
-  const maxTestsToShow = Math.max(...filteredPatients.map((p) => p.testProgress.length), 0);
 
   return (
     <div className="space-y-6">
@@ -192,41 +261,7 @@ export const PatientProgressDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">With Missing Items</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{statistics.withMissing}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">All Completed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{statistics.allCompleted}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.avgProgress}%</div>
-          </CardContent>
-        </Card>
-      </div>
+      <StatCards statistics={statistics} />
 
       {/* Filters */}
       <Card>
@@ -241,18 +276,15 @@ export const PatientProgressDashboard: React.FC = () => {
                 <Input
                   placeholder="Search by patient ID, name, or contact..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={handleSearchChange}
                   className="pl-10"
                 />
               </div>
             </form>
             <Button
               type="button"
-              variant={filterMissing ? 'default' : 'outline'}
-              onClick={() => {
-                setFilterMissing(!filterMissing);
-                setPage(1);
-              }}
+              variant={filterMissing ? 'primary' : 'outline'}
+              onClick={handleToggleFilter}
             >
               {filterMissing ? (
                 <>
@@ -262,7 +294,7 @@ export const PatientProgressDashboard: React.FC = () => {
               ) : (
                 <>
                   <AlertTriangle className="h-4 w-4 mr-2" />
-                  Show Missing Only
+                  Show Pending Only
                 </>
               )}
             </Button>
@@ -278,14 +310,14 @@ export const PatientProgressDashboard: React.FC = () => {
         <CardContent>
           {isLoading ? (
             <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
+              {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
           ) : filteredPatients.length === 0 ? (
             <EmptyState
               title="No patients found"
-              message={filterMissing ? 'No patients with missing items' : 'Try adjusting your search or filters'}
+              message={filterMissing ? 'No patients with pending tests' : 'Try adjusting your search or filters'}
             />
           ) : (
             <div className="overflow-x-auto">
@@ -306,57 +338,11 @@ export const PatientProgressDashboard: React.FC = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredPatients.map((patient) => (
-                    <TableRow key={patient.id}>
-                      <TableCell className="font-mono text-sm">{patient.patientId}</TableCell>
-                      <TableCell className="font-medium">{patient.name}</TableCell>
-                      <TableCell>{patient.contactNumber}</TableCell>
-                      <TableCell>{patient.totalTestsExpected}</TableCell>
-                      <TableCell>{patient.testsAssigned}</TableCell>
-                      <TableCell>{patient.testsCompleted}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className={`h-full transition-all ${
-                                patient.overallProgress === 100
-                                  ? 'bg-green-500'
-                                  : patient.overallProgress >= 50
-                                  ? 'bg-yellow-500'
-                                  : 'bg-red-500'
-                              }`}
-                              style={{ width: `${patient.overallProgress}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium whitespace-nowrap">
-                            {patient.overallProgress}%
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getBloodSampleBadge(patient)}</TableCell>
-                      <TableCell>
-                        {patient.hasMissingItems ? (
-                          <Badge variant="destructive">
-                            <AlertTriangle className="h-3 w-3 mr-1" />
-                            Missing Items
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-green-100 text-green-800">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Complete
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewPatient(patient.id)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    <PatientProgressRow
+                      key={patient.id}
+                      patient={patient}
+                      onView={handleViewPatient}
+                    />
                   ))}
                 </TableBody>
               </Table>
@@ -369,6 +355,8 @@ export const PatientProgressDashboard: React.FC = () => {
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}
+                totalItems={total}
+                itemsPerPage={limit}
                 onPageChange={setPage}
               />
             </div>
@@ -378,4 +366,3 @@ export const PatientProgressDashboard: React.FC = () => {
     </div>
   );
 };
-

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { patientsService } from '@/services/api/patients.service';
 import { packagesService } from '@/services/api/packages.service';
@@ -24,6 +24,9 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Plus, Users as UsersIcon } from 'lucide-react';
 import { UpdatePaymentModal } from '../UpdatePaymentModal/UpdatePaymentModal';
 import { Skeleton } from '@/components/common/Skeleton';
+
+// Memoized table component
+const MemoizedPatientTable = React.memo(PatientTable);
 
 export const PatientList: React.FC = () => {
   const router = useRouter();
@@ -52,30 +55,31 @@ export const PatientList: React.FC = () => {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [patientForPayment, setPatientForPayment] = useState<Patient | null>(null);
 
-  const fetchPatients = async () => {
+  // Memoize query params to prevent unnecessary re-renders
+  const queryParams = useMemo((): QueryPatientsParams => ({
+    page: pagination.page,
+    limit: pagination.limit,
+    search: debouncedSearch || undefined,
+    paymentStatus: paymentStatusFilter,
+    dateFrom: dateFromFilter,
+    dateTo: dateToFilter,
+    packageId: packageFilter,
+  }), [pagination.page, pagination.limit, debouncedSearch, paymentStatusFilter, dateFromFilter, dateToFilter, packageFilter]);
+
+  const fetchPatients = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const params: QueryPatientsParams = {
-        page: pagination.page,
-        limit: pagination.limit,
-        search: debouncedSearch || undefined,
-        paymentStatus: paymentStatusFilter,
-        dateFrom: dateFromFilter,
-        dateTo: dateToFilter,
-        packageId: packageFilter,
-      };
-
-      const response: PaginatedPatientsResponse = await patientsService.getPatients(params);
+      const response: PaginatedPatientsResponse = await patientsService.getPatients(queryParams);
 
       setPatients(response.data);
-      setPagination({
+      setPagination(prev => ({
+        ...prev,
         page: response.meta.page,
-        limit: response.meta.limit,
         total: response.meta.total,
         totalPages: response.meta.totalPages,
-      });
+      }));
     } catch (err) {
       const apiError = err as ApiError;
       setError(getErrorMessage(apiError));
@@ -86,74 +90,85 @@ export const PatientList: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [queryParams, addToast]);
 
-  const fetchPackages = async () => {
-    try {
-      const data = await packagesService.getPackages({ isActive: true });
-      setPackages(data);
-    } catch (err) {
-      // Silently fail - packages filter is optional
-    }
-  };
-
+  // Fetch packages only once
   useEffect(() => {
-    fetchPackages();
+    let mounted = true;
+    packagesService.getPackages({ isActive: true })
+      .then(data => {
+        if (mounted) setPackages(data);
+      })
+      .catch(() => {
+        // Silently fail - packages filter is optional
+      });
+    return () => { mounted = false; };
   }, []);
 
+  // Fetch patients when query params change
   useEffect(() => {
     fetchPatients();
-  }, [pagination.page, pagination.limit, debouncedSearch, paymentStatusFilter, dateFromFilter, dateToFilter, packageFilter]);
+  }, [fetchPatients]);
 
-  const handlePageChange = (page: number) => {
-    setPagination((prev) => ({ ...prev, page }));
-  };
+  // Memoized handlers to prevent child re-renders
+  const handlePageChange = useCallback((page: number) => {
+    setPagination(prev => ({ ...prev, page }));
+  }, []);
 
-  const handleItemsPerPageChange = (limit: number) => {
-    setPagination((prev) => ({ ...prev, limit, page: 1 }));
-  };
+  const handleItemsPerPageChange = useCallback((limit: number) => {
+    setPagination(prev => ({ ...prev, limit, page: 1 }));
+  }, []);
 
-  const handleSearchChange = (value: string) => {
+  const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, []);
 
-  const handlePaymentStatusFilterChange = (status: PaymentStatus | undefined) => {
+  const handlePaymentStatusFilterChange = useCallback((status: PaymentStatus | undefined) => {
     setPaymentStatusFilter(status);
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, []);
 
-  const handleDateFromFilterChange = (date: string | undefined) => {
+  const handleDateFromFilterChange = useCallback((date: string | undefined) => {
     setDateFromFilter(date);
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, []);
 
-  const handleDateToFilterChange = (date: string | undefined) => {
+  const handleDateToFilterChange = useCallback((date: string | undefined) => {
     setDateToFilter(date);
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, []);
 
-  const handlePackageFilterChange = (packageId: string | undefined) => {
+  const handlePackageFilterChange = useCallback((packageId: string | undefined) => {
     setPackageFilter(packageId);
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, []);
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setPaymentStatusFilter(undefined);
     setDateFromFilter(undefined);
     setDateToFilter(undefined);
     setPackageFilter(undefined);
     setSearchQuery('');
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, []);
 
-  const handleUpdatePaymentClick = (patientId: string) => {
-    const patient = patients.find((p) => p.id === patientId);
+  const handleUpdatePaymentClick = useCallback((patientId: string) => {
+    const patient = patients.find(p => p.id === patientId);
     if (patient) {
       setPatientForPayment(patient);
       setPaymentModalOpen(true);
     }
-  };
+  }, [patients]);
+
+  const handleClosePaymentModal = useCallback(() => {
+    setPaymentModalOpen(false);
+    setPatientForPayment(null);
+  }, []);
+
+  const handleRegisterClick = useCallback(() => {
+    router.push('/patients/new');
+  }, [router]);
 
   if (error && !isLoading) {
     return (
@@ -180,7 +195,7 @@ export const PatientList: React.FC = () => {
         <HasRole allowedRoles={[UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN]}>
           <Button
             variant="primary"
-            onClick={() => router.push('/patients/new')}
+            onClick={handleRegisterClick}
             size="default"
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -231,7 +246,7 @@ export const PatientList: React.FC = () => {
           ) : (
             <>
               <div className="rounded-md border">
-                <PatientTable
+                <MemoizedPatientTable
                   patients={patients}
                   onUpdatePayment={handleUpdatePaymentClick}
                 />
@@ -256,10 +271,7 @@ export const PatientList: React.FC = () => {
       {patientForPayment && (
         <UpdatePaymentModal
           isOpen={paymentModalOpen}
-          onClose={() => {
-            setPaymentModalOpen(false);
-            setPatientForPayment(null);
-          }}
+          onClose={handleClosePaymentModal}
           patient={patientForPayment}
           onSuccess={fetchPatients}
         />
@@ -267,4 +279,3 @@ export const PatientList: React.FC = () => {
     </div>
   );
 };
-

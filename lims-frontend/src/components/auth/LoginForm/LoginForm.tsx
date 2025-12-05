@@ -4,6 +4,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuthStore } from '@/store/auth.store';
 import { loginSchema, LoginFormData } from '@/utils/validation/schemas';
 import { Input } from '@/components/common/Input/Input';
@@ -59,6 +60,14 @@ export const LoginForm: React.FC = () => {
           error={errors.password?.message}
           {...register('password')}
         />
+        <div className="mt-1 text-right">
+          <Link
+            href="/forgot-password"
+            className="text-sm text-primary hover:underline"
+          >
+            Forgot Password?
+          </Link>
+        </div>
       </div>
 
       {error && (

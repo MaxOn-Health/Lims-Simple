@@ -21,12 +21,16 @@ export interface PatientInfo {
   id: string;
   patientId: string;
   name: string;
+  dateOfBirth?: string;
+  gender?: string;
+  phone?: string;
 }
 
 export interface UserInfo {
   id: string;
   email: string;
   fullName: string;
+  employeeId?: string;
 }
 
 export interface Result {

@@ -48,7 +48,7 @@ export class DoctorReviewsService {
     private auditService: AuditService,
     @Inject(forwardRef(() => ReportsService))
     private reportsService: ReportsService,
-  ) {}
+  ) { }
 
   async findPatientsForReview(
     doctorId: string,
@@ -178,10 +178,10 @@ export class DoctorReviewsService {
     const assignmentIds = assignments.map((a) => a.id);
     const results = assignmentIds.length > 0
       ? await this.testResultsRepository.find({
-          where: assignmentIds.map((id) => ({ assignmentId: id })),
-          relations: ['assignment', 'assignment.test', 'assignment.patient', 'enteredByUser', 'verifiedByUser'],
-          order: { enteredAt: 'DESC' },
-        })
+        where: assignmentIds.map((id) => ({ assignmentId: id })),
+        relations: ['assignment', 'assignment.test', 'assignment.patient', 'enteredByUser', 'verifiedByUser'],
+        order: { enteredAt: 'DESC' },
+      })
       : [];
 
     // Get blood sample if exists
@@ -203,12 +203,12 @@ export class DoctorReviewsService {
       bloodSample: bloodSample ? this.mapBloodSampleToDto(bloodSample) : undefined,
       review: review
         ? {
-            id: review.id,
-            remarks: review.remarks,
-            reviewedAt: review.reviewedAt,
-            signedAt: review.signedAt,
-            isSigned: review.isSigned,
-          }
+          id: review.id,
+          remarks: review.remarks,
+          reviewedAt: review.reviewedAt,
+          signedAt: review.signedAt,
+          isSigned: review.isSigned,
+        }
         : undefined,
     };
   }
@@ -461,8 +461,8 @@ export class DoctorReviewsService {
     const results =
       assignmentIds.length > 0
         ? await this.testResultsRepository.find({
-            where: assignmentIds.map((id) => ({ assignmentId: id })),
-          })
+          where: assignmentIds.map((id) => ({ assignmentId: id })),
+        })
         : [];
     const allResultsExist = results.length === assignments.length;
 
@@ -531,40 +531,40 @@ export class DoctorReviewsService {
       updatedAt: result.updatedAt,
       assignment: result.assignment
         ? {
-            id: result.assignment.id,
-            patientId: result.assignment.patientId,
-            testId: result.assignment.testId,
-            adminId: result.assignment.adminId,
-            status: result.assignment.status,
-          }
+          id: result.assignment.id,
+          patientId: result.assignment.patientId,
+          testId: result.assignment.testId,
+          adminId: result.assignment.adminId,
+          status: result.assignment.status,
+        }
         : undefined,
       test: result.assignment?.test
         ? {
-            id: result.assignment.test.id,
-            name: result.assignment.test.name,
-            category: result.assignment.test.category,
-          }
+          id: result.assignment.test.id,
+          name: result.assignment.test.name,
+          category: result.assignment.test.category,
+        }
         : undefined,
       patient: result.assignment?.patient
         ? {
-            id: result.assignment.patient.id,
-            patientId: result.assignment.patient.patientId,
-            name: result.assignment.patient.name,
-          }
+          id: result.assignment.patient.id,
+          patientId: result.assignment.patient.patientId,
+          name: result.assignment.patient.name,
+        }
         : undefined,
       enteredByUser: result.enteredByUser
         ? {
-            id: result.enteredByUser.id,
-            email: result.enteredByUser.email,
-            fullName: result.enteredByUser.fullName,
-          }
+          id: result.enteredByUser.id,
+          email: result.enteredByUser.email,
+          fullName: result.enteredByUser.fullName,
+        }
         : undefined,
       verifiedByUser: result.verifiedByUser
         ? {
-            id: result.verifiedByUser.id,
-            email: result.verifiedByUser.email,
-            fullName: result.verifiedByUser.fullName,
-          }
+          id: result.verifiedByUser.id,
+          email: result.verifiedByUser.email,
+          fullName: result.verifiedByUser.fullName,
+        }
         : null,
     };
   }
@@ -600,27 +600,27 @@ export class DoctorReviewsService {
       updatedAt: sample.updatedAt,
       patient: sample.patient
         ? {
-            id: sample.patient.id,
-            patientId: sample.patient.patientId,
-            name: sample.patient.name,
-            age: sample.patient.age,
-            gender: sample.patient.gender,
-            contactNumber: sample.patient.contactNumber,
-          }
+          id: sample.patient.id,
+          patientId: sample.patient.patientId,
+          name: sample.patient.name,
+          age: sample.patient.age,
+          gender: sample.patient.gender,
+          contactNumber: sample.patient.contactNumber,
+        }
         : undefined,
       collectedByUser: sample.collectedByUser
         ? {
-            id: sample.collectedByUser.id,
-            email: sample.collectedByUser.email,
-            fullName: sample.collectedByUser.fullName,
-          }
+          id: sample.collectedByUser.id,
+          email: sample.collectedByUser.email,
+          fullName: sample.collectedByUser.fullName,
+        }
         : undefined,
       testedByUser: sample.testedByUser
         ? {
-            id: sample.testedByUser.id,
-            email: sample.testedByUser.email,
-            fullName: sample.testedByUser.fullName,
-          }
+          id: sample.testedByUser.id,
+          email: sample.testedByUser.email,
+          fullName: sample.testedByUser.fullName,
+        }
         : null,
     };
   }

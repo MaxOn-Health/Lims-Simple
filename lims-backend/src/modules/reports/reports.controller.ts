@@ -35,11 +35,11 @@ import * as path from 'path';
 @ApiBearerAuth('JWT-auth')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) {}
+  constructor(private readonly reportsService: ReportsService) { }
 
   @Post('generate/:patientId')
-  @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN, UserRole.DOCTOR)
-  @ApiOperation({ summary: 'Generate report for a patient (RECEPTIONIST, SUPER_ADMIN, DOCTOR)' })
+  @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN)
+  @ApiOperation({ summary: 'Generate report for a patient' })
   @ApiParam({ name: 'patientId', description: 'Patient UUID' })
   @ApiResponse({
     status: 201,
@@ -136,8 +136,8 @@ export class ReportsController {
   }
 
   @Get()
-  @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN, UserRole.DOCTOR)
-  @ApiOperation({ summary: 'Get all reports with pagination and filters (RECEPTIONIST, SUPER_ADMIN, DOCTOR)' })
+  @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN)
+  @ApiOperation({ summary: 'Get all reports with pagination and filters' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'GENERATING', 'COMPLETED', 'FAILED'] })

@@ -35,7 +35,7 @@ import { ProjectStatus } from './constants/project-status.enum';
 @Controller('projects')
 @ApiBearerAuth('JWT-auth')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(private readonly projectsService: ProjectsService) { }
 
   @Post()
   @UseGuards(RolesGuard)

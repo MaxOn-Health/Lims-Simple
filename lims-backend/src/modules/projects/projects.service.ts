@@ -27,7 +27,7 @@ export class ProjectsService {
     private projectsRepository: Repository<Project>,
     @InjectRepository(Patient)
     private patientsRepository: Repository<Patient>,
-  ) {}
+  ) { }
 
   async create(createProjectDto: CreateProjectDto): Promise<ProjectResponseDto> {
     // Check if project name already exists

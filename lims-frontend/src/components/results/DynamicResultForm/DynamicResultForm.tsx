@@ -23,6 +23,7 @@ interface DynamicResultFormProps {
   test: Test;
   defaultValues?: Record<string, any>;
   onSubmit: (data: SubmitResultRequest | UpdateResultRequest) => Promise<void>;
+  onPreview?: (data: SubmitResultRequest | UpdateResultRequest) => void;
   onCancel?: () => void;
   mode?: 'create' | 'edit';
   isSubmitting?: boolean;
@@ -32,6 +33,7 @@ export const DynamicResultForm: React.FC<DynamicResultFormProps> = ({
   test,
   defaultValues,
   onSubmit,
+  onPreview,
   onCancel,
   mode = 'create',
   isSubmitting = false,
@@ -51,35 +53,35 @@ export const DynamicResultForm: React.FC<DynamicResultFormProps> = ({
   // Note: assignmentId is added by the parent component, so we don't validate it here
   const schema = isAudiometryTest
     ? (mode === 'edit'
-        ? z.object({
-            resultValues: createAudiometryResultValuesSchema().optional(),
-            notes: z.string().optional(),
-          })
-        : z.object({
-            resultValues: createAudiometryResultValuesSchema(),
-            notes: z.string().optional(),
-          }))
+      ? z.object({
+        resultValues: createAudiometryResultValuesSchema().optional(),
+        notes: z.string().optional(),
+      })
+      : z.object({
+        resultValues: createAudiometryResultValuesSchema(),
+        notes: z.string().optional(),
+      }))
     : isEyeTest
-    ? (mode === 'edit'
+      ? (mode === 'edit'
         ? z.object({
-            resultValues: createEyeTestResultValuesSchema().optional(),
-            notes: z.string().optional(),
-          })
+          resultValues: createEyeTestResultValuesSchema().optional(),
+          notes: z.string().optional(),
+        })
         : z.object({
-            resultValues: createEyeTestResultValuesSchema(),
-            notes: z.string().optional(),
-          }))
-    : (mode === 'edit'
+          resultValues: createEyeTestResultValuesSchema(),
+          notes: z.string().optional(),
+        }))
+      : (mode === 'edit'
         ? createUpdateResultSchema(
-            test.testFields,
-            test.normalRangeMin,
-            test.normalRangeMax
-          )
+          test.testFields,
+          test.normalRangeMin,
+          test.normalRangeMax
+        )
         : createSubmitResultSchema(
-            test.testFields,
-            test.normalRangeMin,
-            test.normalRangeMax
-          ));
+          test.testFields,
+          test.normalRangeMin,
+          test.normalRangeMax
+        ));
 
   const form = useForm<SubmitResultRequest | UpdateResultRequest>({
     resolver: zodResolver(schema),
@@ -184,6 +186,36 @@ export const DynamicResultForm: React.FC<DynamicResultFormProps> = ({
           {onCancel && (
             <Button variant="outline" onClick={onCancel} type="button" disabled={isSubmitting} className="h-8 text-sm">
               Cancel
+            </Button>
+          )}
+          {onPreview && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSubmit((data) => {
+                // Apply same cleaning logic as submit
+                if (data.resultValues && isEyeTest) {
+                  // duplication of cleaning logic, ideally extract this
+                  const cleanedResultValues: Record<string, any> = {};
+                  for (const [key, value] of Object.entries(data.resultValues)) {
+                    if (value === null || value === undefined || value === '') continue;
+                    if (typeof value === 'string') {
+                      const trimmed = value.trim();
+                      if (trimmed === '') continue;
+                      const num = Number(trimmed);
+                      if (!isNaN(num)) cleanedResultValues[key] = num;
+                    } else {
+                      cleanedResultValues[key] = value;
+                    }
+                  }
+                  data.resultValues = cleanedResultValues;
+                }
+                onPreview(data);
+              })}
+              disabled={isSubmitting}
+              className="h-8 text-sm"
+            >
+              Preview PDF
             </Button>
           )}
           <Button type="submit" isLoading={isSubmitting} className="h-8 text-sm">

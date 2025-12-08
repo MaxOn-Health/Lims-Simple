@@ -37,13 +37,13 @@ export const EyeTestResultForm: React.FC<EyeTestResultFormProps> = ({
   };
 
   const handleNormalVision = () => {
-    setValue('resultValues.normal_vision', true);
-    setValue('resultValues.near_normal_vision', false);
+    setValue('resultValues.normal_vision', 'Yes'); // Changed from true to 'Yes' for string validation
+    setValue('resultValues.near_normal_vision', ''); // Changed from false to ''
   };
 
   const handleNearNormalVision = () => {
-    setValue('resultValues.normal_vision', false);
-    setValue('resultValues.near_normal_vision', true);
+    setValue('resultValues.normal_vision', ''); // Changed from false to ''
+    setValue('resultValues.near_normal_vision', 'Yes'); // Changed from true to 'Yes'
   };
 
   const eyeHealthFields: Array<keyof typeof EYE_HEALTH_LABELS> = [
@@ -119,7 +119,7 @@ export const EyeTestResultForm: React.FC<EyeTestResultFormProps> = ({
                         className={cn(
                           'flex-1 h-7 text-xs py-0 px-1.5',
                           fieldError &&
-                            'border-destructive focus-visible:ring-destructive'
+                          'border-destructive focus-visible:ring-destructive'
                         )}
                         aria-label={fieldLabel}
                       />

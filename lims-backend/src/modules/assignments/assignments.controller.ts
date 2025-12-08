@@ -35,7 +35,7 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 @ApiBearerAuth('JWT-auth')
 @UseGuards(RolesGuard)
 export class AssignmentsController {
-  constructor(private readonly assignmentsService: AssignmentsService) {}
+  constructor(private readonly assignmentsService: AssignmentsService) { }
 
   @Post('auto-assign/:patientId')
   @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN)
@@ -97,7 +97,7 @@ export class AssignmentsController {
   }
 
   @Get()
-  @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN, UserRole.DOCTOR)
   @ApiOperation({
     summary: 'Get all assignments with optional filters (RECEPTIONIST, SUPER_ADMIN only)',
   })

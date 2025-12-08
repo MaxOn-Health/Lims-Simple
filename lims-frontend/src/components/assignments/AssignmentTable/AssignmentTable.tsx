@@ -16,7 +16,7 @@ import { Button } from '@/components/common/Button/Button';
 import { AssignmentStatusBadge } from '../AssignmentStatusBadge/AssignmentStatusBadge';
 import { HasRole } from '@/components/common/HasRole/HasRole';
 import { UserRole } from '@/types/user.types';
-import { Eye, UserCog, RefreshCw } from 'lucide-react';
+import { Eye, UserCog, RefreshCw, FlaskConical } from 'lucide-react';
 import { formatAssignmentDateShort } from '@/utils/assignment-helpers';
 
 interface AssignmentTableProps {
@@ -146,16 +146,31 @@ export const AssignmentTable: React.FC<AssignmentTableProps> = ({
                 </HasRole>
                 <HasRole allowedRoles={[UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN]}>
                   {onUpdateStatus && assignment.adminId && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => onUpdateStatus(assignment.id)}
-                      disabled={assignment.status === 'SUBMITTED'}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      <span className="sr-only">Update Status</span>
-                    </Button>
+                    <>
+                      {(assignment.status === 'PENDING' || assignment.status === 'ASSIGNED' || assignment.status === 'IN_PROGRESS') && (
+                        <Link href={`/assignments/${assignment.id}/result`}>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="h-8 px-2 flex items-center gap-1"
+                          >
+                            <FlaskConical className="h-4 w-4" />
+                            <span className="text-xs">Enter Result</span>
+                          </Button>
+                        </Link>
+                      )}
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => onUpdateStatus(assignment.id)}
+                        disabled={assignment.status === 'SUBMITTED'}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        <span className="sr-only">Update Status</span>
+                      </Button>
+                    </>
                   )}
                 </HasRole>
               </div>

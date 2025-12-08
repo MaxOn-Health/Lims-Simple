@@ -34,6 +34,11 @@ import {
   Download,
 } from 'lucide-react';
 
+import { reportsService } from '@/services/api/reports.service';
+import { useUIStore } from '@/store/ui.store';
+import { getErrorMessage } from '@/utils/error-handler';
+import { ApiError } from '@/types/api.types';
+
 interface ResultViewProps {
   result: Result;
   test?: Test;
@@ -43,35 +48,38 @@ interface ResultViewProps {
 export const ResultView: React.FC<ResultViewProps> = ({ result, test, onUpdate }) => {
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'report'>('table');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const { addToast } = useUIStore();
 
   const isAudiometryTest = test && (test.adminRole === 'audiometry' || test.name.toLowerCase().includes('audiometry'));
   const isEyeTest = test && (test.adminRole === 'eye' || test.name.toLowerCase().includes('eye'));
 
-  const handleExportPDF = async () => {
-    // Use html2pdf or similar library
-    const elementId = isAudiometryTest ? 'audiometry-report' : isEyeTest ? 'eye-test-report' : null;
-    if (!elementId) return;
-    
-    const element = document.getElementById(elementId);
-    if (!element) return;
+  const handleDownloadReport = async () => {
+    if (!result.patient?.id) return;
 
+    setIsDownloading(true);
     try {
-      // @ts-ignore
-      const html2pdf = (await import('html2pdf.js')).default;
-      const reportType = isAudiometryTest ? 'audiometry' : 'eye-test';
-      const opt = {
-        margin: 0.5,
-        filename: `${reportType}-report-${result.patient?.patientId || result.id}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-      };
-      await html2pdf().set(opt).from(element).save();
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-      alert('Failed to export PDF. Please try again.');
+      const report = await reportsService.generateReport(result.patient.id);
+      await reportsService.downloadReport(report.id);
+      addToast({ type: 'success', message: 'Report downloaded successfully' });
+    } catch (err) {
+      const apiError = err as ApiError;
+      addToast({
+        type: 'error',
+        message: getErrorMessage(apiError) || 'Failed to download report',
+      });
+    } finally {
+      setIsDownloading(false);
     }
   };
+
+  const handleExportPDF = async () => {
+    // ... existing client-side export logic if needed ...
+    // But forcing the formal report download is better.
+    handleDownloadReport();
+  };
+
+  // ... rest of component ...
 
   if (!test) {
     return (
@@ -96,7 +104,19 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, test, onUpdate }
       {/* Result Information Card */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Result Information</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-base">Result Information</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadReport}
+              className="h-7 text-xs"
+              isLoading={isDownloading}
+            >
+              <Download className="mr-1 h-3 w-3" />
+              Export PDF
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3 pt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -224,7 +244,7 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, test, onUpdate }
             {(isAudiometryTest || isEyeTest) && (
               <div className="flex gap-2">
                 <Button
-                  variant={viewMode === 'table' ? 'default' : 'outline'}
+                  variant={viewMode === 'table' ? 'primary' : 'outline'}
                   size="sm"
                   className="h-7 text-xs"
                   onClick={() => setViewMode('table')}
@@ -232,7 +252,7 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, test, onUpdate }
                   Table View
                 </Button>
                 <Button
-                  variant={viewMode === 'report' ? 'default' : 'outline'}
+                  variant={viewMode === 'report' ? 'primary' : 'outline'}
                   size="sm"
                   className="h-7 text-xs"
                   onClick={() => setViewMode('report')}
@@ -258,8 +278,8 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, test, onUpdate }
           {/* Check if this is an audiometry test */}
           {isAudiometryTest ? (
             viewMode === 'report' ? (
-              <AudiometryReportView 
-                result={result} 
+              <AudiometryReportView
+                result={result}
                 test={test}
               />
             ) : (
@@ -267,8 +287,8 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, test, onUpdate }
             )
           ) : isEyeTest ? (
             viewMode === 'report' ? (
-              <EyeTestReportView 
-                result={result} 
+              <EyeTestReportView
+                result={result}
                 test={test}
               />
             ) : (

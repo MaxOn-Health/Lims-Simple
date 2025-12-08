@@ -37,5 +37,5 @@ import { ReportsModule } from '../reports/reports.module';
   providers: [DoctorReviewsService, ReportReadinessService],
   exports: [DoctorReviewsService, TypeOrmModule],
 })
-export class DoctorReviewsModule {}
+export class DoctorReviewsModule { }
 

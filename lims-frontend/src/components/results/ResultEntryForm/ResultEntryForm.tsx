@@ -17,6 +17,9 @@ import { getErrorMessage } from '@/utils/error-handler';
 import { ApiError } from '@/types/api.types';
 import { FileText, User, FlaskConical, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { reportsService } from '@/services/api/reports.service';
+import { ResultSuccessModal } from '../ResultSuccessModal/ResultSuccessModal';
+import { ResultPreviewModal } from '../ResultPreviewModal/ResultPreviewModal';
 
 export const ResultEntryForm: React.FC = () => {
   const router = useRouter();
@@ -29,6 +32,10 @@ export const ResultEntryForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [generatedReportId, setGeneratedReportId] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewData, setPreviewData] = useState<any>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -97,17 +104,71 @@ export const ResultEntryForm: React.FC = () => {
         message: 'Result submitted successfully',
       });
 
-      // Navigate to assignment detail or results page
-      router.push(`/assignments/${assignmentId}`);
+      // Show success modal instead of auto-redirecting
+      setShowSuccessModal(true);
+
+      // Attempt to generate report immediately if possible (optimistic)
+      if (assignment.patientId) {
+        try {
+          const report = await reportsService.generateReport(assignment.patientId);
+          setGeneratedReportId(report.id);
+        } catch (reportErr) {
+          console.error('Failed to auto-generate report:', reportErr);
+          // We don't block the success modal if report generation fails, 
+          // user can try again from dashboard or we'll handle in print handler
+        }
+      }
+
     } catch (err) {
       const apiError = err as ApiError;
       addToast({
         type: 'error',
         message: getErrorMessage(apiError) || 'Failed to submit result',
       });
+      setIsSubmitting(false); // Only reset if error, keep loading if success (modal shows)
+    } finally {
+      if (!showSuccessModal) {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  const handlePreview = (data: SubmitResultRequest | UpdateResultRequest) => {
+    setPreviewData(data);
+    setShowPreviewModal(true);
+  };
+
+  const handlePrintReport = async () => {
+    if (!assignment?.patientId) return;
+
+    try {
+      let reportId = generatedReportId;
+
+      // If we didn't successfully generate it yet, try now
+      if (!reportId) {
+        setIsSubmitting(true); // Re-use submitting state for loading
+        const report = await reportsService.generateReport(assignment.patientId);
+        reportId = report.id;
+        setGeneratedReportId(report.id);
+      }
+
+      if (reportId) {
+        // Download/Open PDF
+        await reportsService.downloadReport(reportId);
+      }
+    } catch (err) {
+      const apiError = err as ApiError;
+      addToast({
+        type: 'error',
+        message: getErrorMessage(apiError) || 'Failed to generate report for printing',
+      });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleBackToDashboard = () => {
+    router.push('/dashboard');
   };
 
   const handleCancel = () => {
@@ -230,6 +291,7 @@ export const ResultEntryForm: React.FC = () => {
                 <DynamicResultForm
                   test={test}
                   onSubmit={handleSubmit}
+                  onPreview={handlePreview}
                   onCancel={handleCancel}
                   mode="create"
                   isSubmitting={isSubmitting}
@@ -239,7 +301,23 @@ export const ResultEntryForm: React.FC = () => {
           )}
         </div>
       </div>
+
+      <ResultSuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleBackToDashboard}
+        onPrintReport={handlePrintReport}
+        onBackToDashboard={handleBackToDashboard}
+      />
+
+      {assignment && test && (
+        <ResultPreviewModal
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          data={previewData || {}}
+          test={test}
+          assignment={assignment}
+        />
+      )}
     </div>
   );
 };
-

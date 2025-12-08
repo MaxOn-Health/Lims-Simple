@@ -39,7 +39,7 @@ export class ReportsService {
     private pdfGenerationService: PdfGenerationService,
     private fileStorageService: FileStorageService,
     private auditService: AuditService,
-  ) {}
+  ) { }
 
   async generateReport(
     patientId: string,
@@ -54,13 +54,14 @@ export class ReportsService {
       throw new BadRequestException('Patient has no assignments');
     }
 
-    const allSubmitted = assignments.every(
+    // Check if at least one test is SUBMITTED
+    const submittedAssignments = assignments.filter(
       (a) => a.status === AssignmentStatus.SUBMITTED,
     );
 
-    if (!allSubmitted) {
+    if (submittedAssignments.length === 0) {
       throw new BadRequestException(
-        'All tests must be SUBMITTED before generating a report',
+        'At least one test must be SUBMITTED before generating a report',
       );
     }
 
@@ -170,9 +171,12 @@ export class ReportsService {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
 
-    // Get all assignments with test info
+    // Get all assignments with test info (only SUBMITTED)
     const assignments = await this.assignmentsRepository.find({
-      where: { patientId },
+      where: {
+        patientId,
+        status: AssignmentStatus.SUBMITTED
+      },
       relations: ['test'],
       order: { createdAt: 'ASC' },
     });
@@ -182,9 +186,9 @@ export class ReportsService {
     const results =
       assignmentIds.length > 0
         ? await this.testResultsRepository.find({
-            where: assignmentIds.map((id) => ({ assignmentId: id })),
-            relations: ['assignment', 'assignment.test'],
-          })
+          where: assignmentIds.map((id) => ({ assignmentId: id })),
+          relations: ['assignment', 'assignment.test'],
+        })
         : [];
 
     // Map results to report format
@@ -198,14 +202,14 @@ export class ReportsService {
         normalRange:
           test.normalRangeMin !== null || test.normalRangeMax !== null
             ? {
-                min: test.normalRangeMin
-                  ? parseFloat(test.normalRangeMin.toString())
-                  : undefined,
-                max: test.normalRangeMax
-                  ? parseFloat(test.normalRangeMax.toString())
-                  : undefined,
-                unit: test.unit || undefined,
-              }
+              min: test.normalRangeMin
+                ? parseFloat(test.normalRangeMin.toString())
+                : undefined,
+              max: test.normalRangeMax
+                ? parseFloat(test.normalRangeMax.toString())
+                : undefined,
+              unit: test.unit || undefined,
+            }
             : undefined,
         status: this.determineStatus(result, test),
         notes: result?.notes || undefined,
@@ -237,9 +241,9 @@ export class ReportsService {
       },
       package: patientPackage
         ? {
-            name: (patientPackage.package as any)?.name || 'N/A',
-            validityPeriod: (patientPackage.package as any)?.validityDays || undefined,
-          }
+          name: (patientPackage.package as any)?.name || 'N/A',
+          validityPeriod: (patientPackage.package as any)?.validityDays || undefined,
+        }
         : undefined,
       testResults,
       doctorReview: {
@@ -375,28 +379,29 @@ export class ReportsService {
       updatedAt: report.updatedAt,
       patient: report.patient
         ? {
-            id: report.patient.id,
-            patientId: report.patient.patientId,
-            name: report.patient.name,
-          }
+          id: report.patient.id,
+          patientId: report.patient.patientId,
+          name: report.patient.name,
+        }
         : undefined,
       doctorReview: report.doctorReview
         ? {
-            id: report.doctorReview.id,
-            remarks: report.doctorReview.remarks,
-            signedAt: report.doctorReview.signedAt,
-          }
+          id: report.doctorReview.id,
+          remarks: report.doctorReview.remarks,
+          signedAt: report.doctorReview.signedAt,
+        }
         : undefined,
       generatedByUser: report.generatedByUser
         ? {
-            id: report.generatedByUser.id,
-            email: report.generatedByUser.email,
-            fullName: report.generatedByUser.fullName,
-          }
+          id: report.generatedByUser.id,
+          email: report.generatedByUser.email,
+          fullName: report.generatedByUser.fullName,
+        }
         : undefined,
     };
   }
 }
+
 
 
 

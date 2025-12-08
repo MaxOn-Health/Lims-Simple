@@ -13,5 +13,5 @@ import { ProjectsController } from './projects.controller';
   providers: [ProjectsService],
   exports: [ProjectsService, TypeOrmModule],
 })
-export class ProjectsModule {}
+export class ProjectsModule { }
 

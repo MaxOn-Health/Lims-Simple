@@ -29,5 +29,5 @@ import { AuditModule } from '../audit/audit.module';
   controllers: [AssignmentsController],
   exports: [AssignmentsService, AdminSelectionService],
 })
-export class AssignmentsModule {}
+export class AssignmentsModule { }
 

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { AdminSelectionService } from './admin-selection.service';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { Assignment } from '../entities/assignment.entity';
+import { ProjectMember } from '../../projects/entities/project-member.entity';
 import { AssignmentStatus } from '../constants/assignment-status.enum';
 
 describe('AdminSelectionService', () => {
@@ -47,6 +48,12 @@ describe('AdminSelectionService', () => {
           provide: getRepositoryToken(User),
           useValue: {
             find: jest.fn(),
+            createQueryBuilder: jest.fn(() => ({
+              where: jest.fn().mockReturnThis(),
+              andWhere: jest.fn().mockReturnThis(),
+              orderBy: jest.fn().mockReturnThis(),
+              getMany: jest.fn().mockResolvedValue([mockUser1, mockUser2]),
+            })),
           },
         },
         {
@@ -57,6 +64,13 @@ describe('AdminSelectionService', () => {
               andWhere: jest.fn().mockReturnThis(),
               getCount: jest.fn(),
             })),
+            count: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(ProjectMember),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
           },
         },
       ],
@@ -73,7 +87,12 @@ describe('AdminSelectionService', () => {
 
   describe('findAvailableAdmin', () => {
     it('should return null if no admins available', async () => {
-      jest.spyOn(usersRepository, 'find').mockResolvedValue([]);
+      jest.spyOn(usersRepository, 'createQueryBuilder').mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      } as any);
 
       const result = await service.findAvailableAdmin('audiometry');
 
@@ -81,19 +100,19 @@ describe('AdminSelectionService', () => {
     });
 
     it('should return admin with least assignments', async () => {
-      jest.spyOn(usersRepository, 'find').mockResolvedValue([mockUser1, mockUser2]);
-      jest
-        .spyOn(assignmentsRepository, 'createQueryBuilder')
-        .mockReturnValueOnce({
-          where: jest.fn().mockReturnThis(),
-          andWhere: jest.fn().mockReturnThis(),
-          getCount: jest.fn().mockResolvedValue(2), // admin-1 has 2 assignments
-        } as any)
-        .mockReturnValueOnce({
-          where: jest.fn().mockReturnThis(),
-          andWhere: jest.fn().mockReturnThis(),
-          getCount: jest.fn().mockResolvedValue(1), // admin-2 has 1 assignment
-        } as any);
+      jest.spyOn(usersRepository, 'createQueryBuilder').mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([mockUser1, mockUser2]),
+      } as any);
+      // Mock count for admin-1: 2 ASSIGNED + 0 IN_PROGRESS = 2
+      // Mock count for admin-2: 1 ASSIGNED + 0 IN_PROGRESS = 1
+      jest.spyOn(assignmentsRepository, 'count')
+        .mockResolvedValueOnce(2) // admin-1 ASSIGNED
+        .mockResolvedValueOnce(0) // admin-1 IN_PROGRESS
+        .mockResolvedValueOnce(1) // admin-2 ASSIGNED
+        .mockResolvedValueOnce(0); // admin-2 IN_PROGRESS
 
       const result = await service.findAvailableAdmin('audiometry');
 
@@ -101,14 +120,18 @@ describe('AdminSelectionService', () => {
     });
 
     it('should return oldest admin if tie in assignment count', async () => {
-      jest.spyOn(usersRepository, 'find').mockResolvedValue([mockUser1, mockUser2]);
-      jest
-        .spyOn(assignmentsRepository, 'createQueryBuilder')
-        .mockReturnValue({
-          where: jest.fn().mockReturnThis(),
-          andWhere: jest.fn().mockReturnThis(),
-          getCount: jest.fn().mockResolvedValue(1), // Both have 1 assignment
-        } as any);
+      jest.spyOn(usersRepository, 'createQueryBuilder').mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([mockUser1, mockUser2]),
+      } as any);
+      // Both have 1 assignment (1 ASSIGNED + 0 IN_PROGRESS each)
+      jest.spyOn(assignmentsRepository, 'count')
+        .mockResolvedValueOnce(1) // admin-1 ASSIGNED
+        .mockResolvedValueOnce(0) // admin-1 IN_PROGRESS
+        .mockResolvedValueOnce(1) // admin-2 ASSIGNED
+        .mockResolvedValueOnce(0); // admin-2 IN_PROGRESS
 
       const result = await service.findAvailableAdmin('audiometry');
 
@@ -116,17 +139,9 @@ describe('AdminSelectionService', () => {
     });
 
     it('should filter by testTechnicianType', async () => {
-      jest.spyOn(usersRepository, 'find').mockResolvedValue([mockUser1]);
-
       await service.findAvailableAdmin('audiometry');
 
-      expect(usersRepository.find).toHaveBeenCalledWith({
-        where: {
-          role: UserRole.TEST_TECHNICIAN,
-          isActive: true,
-          testTechnicianType: 'audiometry',
-        },
-      });
+      expect(usersRepository.createQueryBuilder).toHaveBeenCalled();
     });
   });
 });

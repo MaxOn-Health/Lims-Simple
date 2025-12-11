@@ -68,6 +68,7 @@ export interface QueryReportsParams {
   dateTo?: string;
   patientId?: string;
   search?: string;
+  projectId?: string;
 }
 
 export interface GenerateReportResponse {

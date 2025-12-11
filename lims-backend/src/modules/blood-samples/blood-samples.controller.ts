@@ -40,7 +40,7 @@ import { UuidValidationPipe } from '../../common/pipes/uuid-validation.pipe';
 @ApiBearerAuth('JWT-auth')
 @UseGuards(RolesGuard)
 export class BloodSamplesController {
-  constructor(private readonly bloodSamplesService: BloodSamplesService) {}
+  constructor(private readonly bloodSamplesService: BloodSamplesService) { }
 
   @Get()
   @Roles(UserRole.SUPER_ADMIN)
@@ -99,7 +99,7 @@ export class BloodSamplesController {
     @Body() registerDto: RegisterBloodSampleDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<RegisterBloodSampleResponseDto> {
-    return this.bloodSamplesService.registerBloodSample(registerDto, user.userId);
+    return this.bloodSamplesService.registerBloodSample(registerDto, user.userId, user.role as UserRole);
   }
 
   @Post('access')
@@ -118,7 +118,7 @@ export class BloodSamplesController {
     @Body() accessDto: AccessBloodSampleDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<BloodSampleResponseDto> {
-    return this.bloodSamplesService.accessBloodSample(accessDto, user.userId);
+    return this.bloodSamplesService.accessBloodSample(accessDto, user.userId, user.role as UserRole);
   }
 
   @Put(':id/status')
@@ -138,7 +138,7 @@ export class BloodSamplesController {
     @Body() updateStatusDto: UpdateBloodSampleStatusDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<BloodSampleResponseDto> {
-    return this.bloodSamplesService.updateStatus(id, updateStatusDto, user.userId);
+    return this.bloodSamplesService.updateStatus(id, updateStatusDto, user.userId, user.role as UserRole);
   }
 
   @Get(':id')
@@ -182,7 +182,7 @@ export class BloodSamplesController {
     @Body() submitDto: SubmitBloodTestResultDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<any> {
-    return this.bloodSamplesService.submitBloodTestResult(id, submitDto, user.userId);
+    return this.bloodSamplesService.submitBloodTestResult(id, submitDto, user.userId, user.role as UserRole);
   }
 }
 

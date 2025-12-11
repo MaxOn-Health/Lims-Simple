@@ -5,6 +5,7 @@ import { ConflictException, NotFoundException, BadRequestException } from '@nest
 import { TestsService } from './tests.service';
 import { Test as TestEntity, TestField } from './entities/test.entity';
 import { PackageTest } from '../packages/entities/package-test.entity';
+import { Assignment } from '../assignments/entities/assignment.entity';
 import { TestCategory } from './constants/test-category';
 import { TestFieldType } from './constants/test-field-types';
 import { CreateTestDto } from './dto/create-test.dto';
@@ -59,6 +60,12 @@ describe('TestsService', () => {
         {
           provide: getRepositoryToken(PackageTest),
           useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Assignment),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+          },
         },
       ],
     }).compile();

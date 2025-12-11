@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, IsDateString, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsInt, IsDateString, Min, Max, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -52,5 +52,13 @@ export class QueryPatientsDto {
   @IsOptional()
   @IsDateString({}, { message: 'dateTo must be a valid ISO date string' })
   dateTo?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter by specific project (automatically scoped to user access)',
+    example: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
 }
 

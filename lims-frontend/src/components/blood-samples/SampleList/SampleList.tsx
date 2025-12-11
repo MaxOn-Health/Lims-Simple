@@ -19,10 +19,19 @@ import { ApiError } from '@/types/api.types';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { FlaskConical } from 'lucide-react';
 import { Skeleton } from '@/components/common/Skeleton';
+import { useProjectFilter } from '@/hooks/useProjectFilter';
+import { ProjectSelector } from '@/components/common/ProjectSelector/ProjectSelector';
 
 export const SampleList: React.FC = () => {
   const router = useRouter();
   const { addToast } = useUIStore();
+  const {
+    selectedProjectId,
+    setSelectedProjectId,
+    userProjects,
+    isSuperAdmin,
+    hasMultipleProjects,
+  } = useProjectFilter();
 
   const [allSamples, setAllSamples] = useState<BloodSample[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -49,8 +58,8 @@ export const SampleList: React.FC = () => {
     setError(null);
 
     try {
-      // Fetch all samples (SUPER_ADMIN only)
-      const samples = await bloodSamplesService.getAllSamples(statusFilter);
+      // Fetch all samples with optional project filter
+      const samples = await bloodSamplesService.getAllSamples(statusFilter, selectedProjectId || undefined);
       setAllSamples(samples);
     } catch (err) {
       const apiError = err as ApiError;
@@ -66,7 +75,10 @@ export const SampleList: React.FC = () => {
 
   const fetchFilterData = async () => {
     try {
-      const patientsData = await patientsService.getPatients({ limit: 100 });
+      const patientsData = await patientsService.getPatients({
+        limit: 100,
+        projectId: selectedProjectId || undefined,
+      });
       setPatients(patientsData.data);
     } catch (err) {
       // Silently fail - filters are optional
@@ -76,7 +88,7 @@ export const SampleList: React.FC = () => {
   useEffect(() => {
     fetchAllSamples();
     fetchFilterData();
-  }, [statusFilter]);
+  }, [statusFilter, selectedProjectId]);
 
   // Filter and search samples client-side
   const filteredSamples = useMemo(() => {
@@ -172,14 +184,30 @@ export const SampleList: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <FlaskConical className="h-8 w-8 text-primary" />
-          Blood Samples
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          View and manage all blood samples
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <FlaskConical className="h-8 w-8 text-primary" />
+            Blood Samples
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            View and manage all blood samples
+          </p>
+        </div>
+        {/* Project Filter */}
+        {(hasMultipleProjects || isSuperAdmin) && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Project:</span>
+            <ProjectSelector
+              selectedProjectId={selectedProjectId}
+              onSelect={setSelectedProjectId}
+              projects={userProjects}
+              showAllOption={isSuperAdmin}
+              className="w-64"
+              size="sm"
+            />
+          </div>
+        )}
       </div>
 
       <Card>

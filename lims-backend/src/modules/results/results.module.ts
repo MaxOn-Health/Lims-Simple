@@ -7,15 +7,17 @@ import { ResultValidationService } from './services/result-validation.service';
 import { Assignment } from '../assignments/entities/assignment.entity';
 import { User } from '../users/entities/user.entity';
 import { AuditModule } from '../audit/audit.module';
+import { ProjectsModule } from '../projects/projects.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([TestResult, Assignment, User]),
     AuditModule,
+    ProjectsModule,
   ],
   providers: [ResultsService, ResultValidationService],
   controllers: [ResultsController],
   exports: [ResultsService, ResultValidationService],
 })
-export class ResultsModule {}
+export class ResultsModule { }
 

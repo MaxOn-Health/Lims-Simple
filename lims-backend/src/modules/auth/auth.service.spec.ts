@@ -51,6 +51,8 @@ describe('AuthService', () => {
             generateAccessToken: jest.fn(),
             generateRefreshToken: jest.fn(),
             verifyRefreshToken: jest.fn(),
+            decodeToken: jest.fn().mockReturnValue({ exp: Math.floor(Date.now() / 1000) + 3600 }),
+            blacklistToken: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

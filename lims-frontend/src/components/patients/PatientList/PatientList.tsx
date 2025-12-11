@@ -24,6 +24,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Plus, Users as UsersIcon } from 'lucide-react';
 import { UpdatePaymentModal } from '../UpdatePaymentModal/UpdatePaymentModal';
 import { Skeleton } from '@/components/common/Skeleton';
+import { useProjectFilter } from '@/hooks/useProjectFilter';
+import { ProjectSelector } from '@/components/common/ProjectSelector/ProjectSelector';
 
 // Memoized table component
 const MemoizedPatientTable = React.memo(PatientTable);
@@ -31,6 +33,14 @@ const MemoizedPatientTable = React.memo(PatientTable);
 export const PatientList: React.FC = () => {
   const router = useRouter();
   const { addToast } = useUIStore();
+  const {
+    selectedProjectId,
+    setSelectedProjectId,
+    userProjects,
+    isSuperAdmin,
+    hasMultipleProjects,
+    isLoading: isProjectsLoading,
+  } = useProjectFilter();
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
@@ -64,7 +74,8 @@ export const PatientList: React.FC = () => {
     dateFrom: dateFromFilter,
     dateTo: dateToFilter,
     packageId: packageFilter,
-  }), [pagination.page, pagination.limit, debouncedSearch, paymentStatusFilter, dateFromFilter, dateToFilter, packageFilter]);
+    projectId: selectedProjectId || undefined,
+  }), [pagination.page, pagination.limit, debouncedSearch, paymentStatusFilter, dateFromFilter, dateToFilter, packageFilter, selectedProjectId]);
 
   const fetchPatients = useCallback(async () => {
     setIsLoading(true);
@@ -206,22 +217,38 @@ export const PatientList: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-end gap-4">
-            <div className="flex-1">
-              <PatientSearch value={searchQuery} onChange={handleSearchChange} />
+          <div className="flex flex-col gap-4">
+            {/* Project Filter - show for users with multiple projects or super admin */}
+            {(hasMultipleProjects || isSuperAdmin) && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Project:</span>
+                <ProjectSelector
+                  selectedProjectId={selectedProjectId}
+                  onSelect={setSelectedProjectId}
+                  projects={userProjects}
+                  showAllOption={isSuperAdmin}
+                  className="w-72"
+                  size="sm"
+                />
+              </div>
+            )}
+            <div className="flex flex-col md:flex-row md:items-end gap-4">
+              <div className="flex-1">
+                <PatientSearch value={searchQuery} onChange={handleSearchChange} />
+              </div>
+              <PatientFilters
+                paymentStatusFilter={paymentStatusFilter}
+                onPaymentStatusFilterChange={handlePaymentStatusFilterChange}
+                dateFromFilter={dateFromFilter}
+                onDateFromFilterChange={handleDateFromFilterChange}
+                dateToFilter={dateToFilter}
+                onDateToFilterChange={handleDateToFilterChange}
+                packageFilter={packageFilter}
+                onPackageFilterChange={handlePackageFilterChange}
+                packages={packages}
+                onReset={handleResetFilters}
+              />
             </div>
-            <PatientFilters
-              paymentStatusFilter={paymentStatusFilter}
-              onPaymentStatusFilterChange={handlePaymentStatusFilterChange}
-              dateFromFilter={dateFromFilter}
-              onDateFromFilterChange={handleDateFromFilterChange}
-              dateToFilter={dateToFilter}
-              onDateToFilterChange={handleDateToFilterChange}
-              packageFilter={packageFilter}
-              onPackageFilterChange={handlePackageFilterChange}
-              packages={packages}
-              onReset={handleResetFilters}
-            />
           </div>
         </CardHeader>
         <CardContent>

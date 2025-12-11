@@ -9,6 +9,7 @@ import {
   MaxLength,
   Matches,
   IsEmail,
+  IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -110,12 +111,20 @@ export class CreateProjectDto {
   contactEmail?: string;
 
   @ApiPropertyOptional({
-    description: 'Camp date',
+    description: 'Project start date',
     example: '2025-12-20',
   })
   @IsOptional()
   @IsDateString({}, { message: 'Invalid date format. Use YYYY-MM-DD' })
-  campDate?: string;
+  startDate?: string;
+
+  @ApiPropertyOptional({
+    description: 'Project end date (for multi-day camps)',
+    example: '2025-12-23',
+  })
+  @IsOptional()
+  @IsDateString({}, { message: 'Invalid date format. Use YYYY-MM-DD' })
+  endDate?: string;
 
   @ApiPropertyOptional({
     description: 'Camp location',
@@ -144,5 +153,15 @@ export class CreateProjectDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({
+    description: 'Array of user IDs to assign as project team members',
+    example: ['123e4567-e89b-12d3-a456-426614174000', '123e4567-e89b-12d3-a456-426614174001'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID(4, { each: true })
+  memberIds?: string[];
 }
 

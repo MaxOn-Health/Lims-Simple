@@ -1,4 +1,30 @@
-<!-- 9cef3327-2183-4ba4-b259-aa31ad2ea022 64c17c4f-ca53-4016-859c-d4bddd736ee1 -->
+---
+name: Fix Patient Registration to Assignment Flow
+overview: ""
+todos:
+  - id: 2dfc514e-d07c-4bc9-b0f3-b08cd1f1ce04
+    content: Create eye.constants.ts with field names, labels, and helper functions for eye test fields
+    status: pending
+  - id: ac561a4a-a08e-42c0-a854-96185c487545
+    content: Create eye-schema.ts with Zod validation schemas for all eye test fields
+    status: pending
+  - id: bc785a4f-3052-4843-8d38-7bb2e5310c66
+    content: Create VisionTable.tsx component for distance and near vision tables (without/with glass for right/left)
+    status: pending
+  - id: 8b94011c-1ef1-4ef9-a773-d30a147fdde8
+    content: Create EyeParametersTable.tsx component for SPH, CYL, AXIS, ADD, VISION parameters (right/left)
+    status: pending
+  - id: 7066fc17-9805-4e55-aa3f-8d848e983c15
+    content: Create EyeTestResultForm.tsx main component integrating all sections (vision tables, parameters, health fields, buttons, remarks)
+    status: pending
+  - id: de3ba0e5-9842-4222-9786-ef12e0ecab8f
+    content: Create index.ts to export all eye test components
+    status: pending
+  - id: 0fbf2949-5720-48eb-a73a-087963461aae
+    content: Update DynamicResultForm.tsx to detect eye tests and use EyeTestResultForm with eye test schema
+    status: pending
+---
+
 # Fix Patient Registration to Assignment Flow
 
 Review and fix the complete patient registration → payment → assignment → technician access flow to match requirements.
@@ -89,13 +115,3 @@ After implementation, verify:
 - [ ] Technicians only see their own assignments in dashboard
 - [ ] Technicians can only edit results for their assigned tests
 - [ ] Assignment filtering works correctly by test type
-
-### To-dos
-
-- [ ] Create eye.constants.ts with field names, labels, and helper functions for eye test fields
-- [ ] Create eye-schema.ts with Zod validation schemas for all eye test fields
-- [ ] Create VisionTable.tsx component for distance and near vision tables (without/with glass for right/left)
-- [ ] Create EyeParametersTable.tsx component for SPH, CYL, AXIS, ADD, VISION parameters (right/left)
-- [ ] Create EyeTestResultForm.tsx main component integrating all sections (vision tables, parameters, health fields, buttons, remarks)
-- [ ] Create index.ts to export all eye test components
-- [ ] Update DynamicResultForm.tsx to detect eye tests and use EyeTestResultForm with eye test schema

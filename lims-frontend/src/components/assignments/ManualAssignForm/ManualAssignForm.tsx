@@ -29,7 +29,8 @@ import { getErrorMessage } from '@/utils/error-handler';
 import { ApiError } from '@/types/api.types';
 import { SearchInput } from '@/components/common/SearchInput/SearchInput';
 import { useDebounce } from '@/hooks/useDebounce/useDebounce';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Users } from 'lucide-react';
+import { TechnicianSelector } from '../TechnicianSelector/TechnicianSelector';
 
 export const ManualAssignForm: React.FC = () => {
   const router = useRouter();
@@ -39,12 +40,14 @@ export const ManualAssignForm: React.FC = () => {
   const [admins, setAdmins] = useState<User[]>([]);
   const [isLoadingPatients, setIsLoadingPatients] = useState(false);
   const [patientSearchQuery, setPatientSearchQuery] = useState('');
+  const [showTechnicianSelector, setShowTechnicianSelector] = useState(false);
   const debouncedPatientSearch = useDebounce(patientSearchQuery, 300);
 
   const {
     control,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateAssignmentRequest>({
     resolver: zodResolver(createAssignmentSchema),
@@ -135,23 +138,33 @@ export const ManualAssignForm: React.FC = () => {
     if (!selectedTestId) return;
 
     try {
-      const test = tests.find((t) => t.id === selectedTestId);
-      if (!test) return;
+      // Get patient's project for project-scoped technician filtering
+      const patient = patients.find((p) => p.id === selectedPatientId);
+      const projectId = patient?.projectId;
 
-      // Fetch admins with matching testTechnicianType
-      const response = await usersService.getUsers({
-        limit: 100,
-        role: UserRole.TEST_TECHNICIAN,
-      });
-      const filteredAdmins = response.data.filter(
-        (admin) => admin.testTechnicianType === test.adminRole && admin.isActive
+      // Use new getAvailableTechnicians API
+      const technicians = await assignmentsService.getAvailableTechnicians(
+        selectedTestId,
+        projectId || undefined
       );
-      setAdmins(filteredAdmins);
+
+      // Map to User format for compatibility with existing dropdown
+      const mappedAdmins = technicians.map((tech) => ({
+        id: tech.id,
+        email: tech.email,
+        fullName: tech.fullName,
+        testTechnicianType: tech.testTechnicianType,
+        currentAssignmentCount: tech.currentAssignmentCount,
+        isActive: tech.isAvailable !== false,
+        role: UserRole.TEST_TECHNICIAN,
+      })) as any[];
+
+      setAdmins(mappedAdmins);
     } catch (err) {
       const apiError = err as ApiError;
       addToast({
         type: 'error',
-        message: getErrorMessage(apiError) || 'Failed to load admins',
+        message: getErrorMessage(apiError) || 'Failed to load technicians',
       });
     }
   };
@@ -335,7 +348,21 @@ export const ManualAssignForm: React.FC = () => {
 
                 {/* Technician Selection */}
                 <div className="space-y-3">
-                  <Label htmlFor="admin-id" className="font-medium">Technician</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="admin-id" className="font-medium">Technician</Label>
+                    {selectedTestId && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowTechnicianSelector(true)}
+                        className="h-7 text-xs text-primary hover:text-primary"
+                      >
+                        <Users className="h-3.5 w-3.5 mr-1" />
+                        Browse
+                      </Button>
+                    )}
+                  </div>
                   <Controller
                     name="adminId"
                     control={control}
@@ -349,17 +376,27 @@ export const ManualAssignForm: React.FC = () => {
                           <SelectValue placeholder="Auto-assign (Optional)" />
                         </SelectTrigger>
                         <SelectContent>
-                          {admins.map((admin) => (
-                            <SelectItem key={admin.id} value={admin.id}>
-                              {admin.fullName || admin.email}
-                            </SelectItem>
-                          ))}
+                          {admins.map((admin) => {
+                            const workload = (admin as any).currentAssignmentCount;
+                            return (
+                              <SelectItem key={admin.id} value={admin.id}>
+                                <div className="flex items-center justify-between w-full">
+                                  <span>{admin.fullName || admin.email}</span>
+                                  {workload !== undefined && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      ({workload} active)
+                                    </span>
+                                  )}
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                     )}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Leave empty to auto-assign to next available technician.
+                    Leave empty to auto-assign, or click Browse for technician details.
                   </p>
                 </div>
 
@@ -389,6 +426,24 @@ export const ManualAssignForm: React.FC = () => {
           </div>
         </div>
       </form>
+
+      {/* TechnicianSelector Modal */}
+      {selectedTestId && (
+        <TechnicianSelector
+          isOpen={showTechnicianSelector}
+          onClose={() => setShowTechnicianSelector(false)}
+          testId={selectedTestId}
+          projectId={patients.find(p => p.id === selectedPatientId)?.projectId}
+          selectedTechnicianId={(watch('adminId') || undefined) as string | undefined}
+          onSelect={(technicianId) => {
+            if (technicianId) {
+              setValue('adminId', technicianId);
+            }
+          }}
+          testName={tests.find(t => t.id === selectedTestId)?.name}
+          showAutoAssign={false}
+        />
+      )}
     </div>
   );
 };

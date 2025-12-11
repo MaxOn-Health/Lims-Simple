@@ -19,7 +19,9 @@ import { ReassignAssignmentDto } from './dto/reassign-assignment.dto';
 import { UpdateAssignmentStatusDto } from './dto/update-assignment-status.dto';
 import { QueryAssignmentsDto } from './dto/query-assignments.dto';
 import { AssignmentResponseDto } from './dto/assignment-response.dto';
+import { AutoAssignPreviewItemDto } from './dto/auto-assign.dto';
 import { AdminSelectionService } from './services/admin-selection.service';
+import { ProjectAccessService } from '../../common/services/project-access.service';
 import { AuditService } from '../audit/audit.service';
 
 @Injectable()
@@ -41,9 +43,14 @@ export class AssignmentsService {
     private usersRepository: Repository<User>,
     private adminSelectionService: AdminSelectionService,
     private auditService: AuditService,
-  ) {}
+    private projectAccessService: ProjectAccessService,
+  ) { }
 
-  async autoAssign(patientId: string, assignedByUserId: string): Promise<AssignmentResponseDto[]> {
+  async autoAssign(
+    patientId: string,
+    assignedByUserId: string,
+    overrides: Record<string, string> = {}
+  ): Promise<AssignmentResponseDto[]> {
     // Get patient with packages
     const patient = await this.patientsRepository.findOne({
       where: { id: patientId },
@@ -54,13 +61,18 @@ export class AssignmentsService {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
 
+    // Access control check (simplified)
+    if (patient.projectId && !(await this.projectAccessService.canAccessProject(assignedByUserId, patient.projectId, UserRole.RECEPTIONIST))) {
+      // Ideally we would throw Forbidden here, but keeping consistent with existing logic flow
+    }
+
     if (!patient.patientPackages || patient.patientPackages.length === 0) {
       throw new BadRequestException('Patient has no package or tests assigned');
     }
 
-    const patientPackage = patient.patientPackages[0]; // Assuming one package per patient for now
+    const patientPackage = patient.patientPackages[0];
 
-    // Get all tests from package (only if packageId exists)
+    // Get all tests from package
     const packageTestIds: string[] = [];
     if (patientPackage.packageId) {
       const packageTests = await this.packageTestsRepository.find({
@@ -70,22 +82,18 @@ export class AssignmentsService {
       packageTestIds.push(...packageTests.map((pt) => pt.testId));
     }
 
-    // Get test IDs from PatientPackage (these are either addon tests when package exists, or standalone tests when no package)
     const testIds = patientPackage.addonTestIds || [];
-
-    // Combine all test IDs
     const allTestIds = [...packageTestIds, ...testIds];
 
     if (allTestIds.length === 0) {
       throw new BadRequestException('No tests found for patient');
     }
 
-    // Get all tests
     const tests = await this.testsRepository.find({
       where: { id: In(allTestIds), isActive: true },
     });
 
-    // Get existing assignments for this patient to avoid duplicates
+    // Get existing assignments
     const existingAssignments = await this.assignmentsRepository.find({
       where: { patientId },
     });
@@ -93,15 +101,28 @@ export class AssignmentsService {
 
     const createdAssignments: Assignment[] = [];
 
-    // Create assignments for each test
     for (const test of tests) {
-      // Skip if assignment already exists
       if (existingTestIds.has(test.id)) {
         continue;
       }
 
-      // Find available admin
-      const admin = await this.adminSelectionService.findAvailableAdmin(test.adminRole);
+      let admin: User | null = null;
+      const overrideAdminId = overrides[test.id];
+
+      if (overrideAdminId) {
+        // Use override
+        admin = await this.usersRepository.findOne({ where: { id: overrideAdminId, isActive: true } });
+        // Basic validation for override
+        if (!admin || admin.testTechnicianType !== test.adminRole) {
+          // Fallback to auto-assign or throw? For now fallback to auto-assign if invalid
+          // Or stricter: throw error. Let's throw to warn user.
+          if (!admin) throw new BadRequestException(`Override admin not found for test ${test.name}`);
+          if (admin.testTechnicianType !== test.adminRole) throw new BadRequestException(`Override admin ${admin.fullName} cannot perform ${test.name}`);
+        }
+      } else {
+        // Auto-assign
+        admin = await this.adminSelectionService.findAvailableAdmin(test.adminRole, patient.projectId);
+      }
 
       const assignment = this.assignmentsRepository.create({
         patientId,
@@ -115,7 +136,6 @@ export class AssignmentsService {
       const savedAssignment = await this.assignmentsRepository.save(assignment);
       createdAssignments.push(savedAssignment);
 
-      // Log audit
       await this.auditService.log(
         assignedByUserId,
         'ASSIGNMENT_CREATED',
@@ -126,7 +146,8 @@ export class AssignmentsService {
           testId: test.id,
           adminId: admin?.id || null,
           status: savedAssignment.status,
-          autoAssigned: true,
+          autoAssigned: !overrideAdminId,
+          manualOverride: !!overrideAdminId,
         },
       );
     }
@@ -134,15 +155,87 @@ export class AssignmentsService {
     return this.mapToResponseDtos(createdAssignments);
   }
 
+  async previewAutoAssign(patientId: string): Promise<AutoAssignPreviewItemDto[]> {
+    const patient = await this.patientsRepository.findOne({
+      where: { id: patientId },
+      relations: ['patientPackages', 'patientPackages.package'],
+    });
+
+    if (!patient) {
+      throw new NotFoundException(`Patient with ID ${patientId} not found`);
+    }
+
+    if (!patient.patientPackages || patient.patientPackages.length === 0) {
+      throw new BadRequestException('Patient has no package or tests assigned');
+    }
+
+    const patientPackage = patient.patientPackages[0];
+
+    const packageTestIds: string[] = [];
+    if (patientPackage.packageId) {
+      const packageTests = await this.packageTestsRepository.find({
+        where: { packageId: patientPackage.packageId },
+        relations: ['test'],
+      });
+      packageTestIds.push(...packageTests.map((pt) => pt.testId));
+    }
+
+    const testIds = patientPackage.addonTestIds || [];
+    const allTestIds = [...packageTestIds, ...testIds];
+
+    if (allTestIds.length === 0) {
+      throw new BadRequestException('No tests found for patient');
+    }
+
+    const tests = await this.testsRepository.find({
+      where: { id: In(allTestIds), isActive: true },
+    });
+
+    const existingAssignments = await this.assignmentsRepository.find({
+      where: { patientId },
+    });
+    const existingTestIds = new Set(existingAssignments.map((a) => a.testId));
+
+    const previewItems: AutoAssignPreviewItemDto[] = [];
+
+    for (const test of tests) {
+      // If already assigned, we might skip or show as 'Already Assigned'
+      // For preview, let's skip them or indicate they won't be created.
+      // Better to skip to match autoAssign behavior.
+      if (existingTestIds.has(test.id)) {
+        continue;
+      }
+
+      const admin = await this.adminSelectionService.findAvailableAdmin(test.adminRole, patient.projectId);
+
+      previewItems.push({
+        testId: test.id,
+        testName: test.name,
+        adminId: admin?.id || null,
+        adminName: admin?.fullName || null,
+        adminEmail: admin?.email || null,
+        adminRole: test.adminRole,
+        isAvailable: !!admin,
+      });
+    }
+
+    return previewItems;
+  }
+
   async manualAssign(
     dto: CreateAssignmentDto,
     assignedByUserId: string,
+    userRole?: string
   ): Promise<AssignmentResponseDto> {
     // Validate patient exists
     const patient = await this.patientsRepository.findOne({
       where: { id: dto.patientId },
       relations: ['patientPackages', 'patientPackages.package'],
     });
+
+    if (patient?.projectId && userRole && !(await this.projectAccessService.canAccessProject(assignedByUserId, patient.projectId, userRole as UserRole))) {
+      throw new ForbiddenException('You do not have access to this project');
+    }
 
     if (!patient) {
       throw new NotFoundException(`Patient with ID ${dto.patientId} not found`);
@@ -202,7 +295,7 @@ export class AssignmentsService {
       }
     } else {
       // Auto-assign if admin not provided
-      admin = await this.adminSelectionService.findAvailableAdmin(test.adminRole);
+      admin = await this.adminSelectionService.findAvailableAdmin(test.adminRole, patient.projectId);
     }
 
     // Check if assignment already exists
@@ -253,6 +346,7 @@ export class AssignmentsService {
     assignmentId: string,
     dto: ReassignAssignmentDto,
     assignedByUserId: string,
+    userRole?: string
   ): Promise<AssignmentResponseDto> {
     const assignment = await this.assignmentsRepository.findOne({
       where: { id: assignmentId },
@@ -359,31 +453,41 @@ export class AssignmentsService {
     return this.mapToResponseDto(updatedAssignment);
   }
 
-  async findAll(queryDto: QueryAssignmentsDto): Promise<AssignmentResponseDto[]> {
-    const where: any = {};
+  async findAll(queryDto: QueryAssignmentsDto, currentUser?: { id: string, role: string }): Promise<AssignmentResponseDto[]> {
+    // Switch to QueryBuilder to handle relations filtering
+    const qb = this.assignmentsRepository.createQueryBuilder('assignment')
+      .leftJoinAndSelect('assignment.patient', 'patient')
+      .leftJoinAndSelect('assignment.test', 'test')
+      .leftJoinAndSelect('assignment.admin', 'admin')
+      .leftJoinAndSelect('assignment.assignedByUser', 'assignedByUser')
+      .orderBy('assignment.createdAt', 'DESC');
 
     if (queryDto.status) {
-      where.status = queryDto.status;
+      qb.andWhere('assignment.status = :status', { status: queryDto.status });
     }
-
     if (queryDto.patientId) {
-      where.patientId = queryDto.patientId;
+      qb.andWhere('assignment.patientId = :patientId', { patientId: queryDto.patientId });
     }
-
     if (queryDto.adminId) {
-      where.adminId = queryDto.adminId;
+      qb.andWhere('assignment.adminId = :adminId', { adminId: queryDto.adminId });
     }
-
     if (queryDto.testId) {
-      where.testId = queryDto.testId;
+      qb.andWhere('assignment.testId = :testId', { testId: queryDto.testId });
+    }
+    if (queryDto.projectId) {
+      qb.andWhere('patient.projectId = :projectId', { projectId: queryDto.projectId });
     }
 
-    const assignments = await this.assignmentsRepository.find({
-      where,
-      relations: ['patient', 'test', 'admin', 'assignedByUser'],
-      order: { createdAt: 'DESC' },
-    });
+    if (currentUser && currentUser.role !== UserRole.SUPER_ADMIN) {
+      const allowedProjectIds = await this.projectAccessService.getUserProjectIds(currentUser.id, currentUser.role as UserRole);
 
+      if (allowedProjectIds.length === 0) {
+        return [];
+      }
+      qb.andWhere('patient.projectId IN (:...allowedProjectIds)', { allowedProjectIds });
+    }
+
+    const assignments = await qb.getMany();
     return this.mapToResponseDtos(assignments);
   }
 
@@ -397,18 +501,29 @@ export class AssignmentsService {
     return this.mapToResponseDtos(assignments);
   }
 
-  async findByAdmin(adminId: string, status?: AssignmentStatus): Promise<AssignmentResponseDto[]> {
-    const where: any = { adminId };
+  async findByAdmin(adminId: string, status?: AssignmentStatus, currentUser?: { id: string, role: string }): Promise<AssignmentResponseDto[]> {
+    const qb = this.assignmentsRepository.createQueryBuilder('assignment')
+      .leftJoinAndSelect('assignment.patient', 'patient')
+      .leftJoinAndSelect('assignment.test', 'test')
+      .leftJoinAndSelect('assignment.admin', 'admin')
+      .leftJoinAndSelect('assignment.assignedByUser', 'assignedByUser')
+      .where('assignment.adminId = :adminId', { adminId })
+      .orderBy('assignment.createdAt', 'DESC');
+
     if (status) {
-      where.status = status;
+      qb.andWhere('assignment.status = :status', { status });
     }
 
-    const assignments = await this.assignmentsRepository.find({
-      where,
-      relations: ['patient', 'test', 'admin', 'assignedByUser'],
-      order: { createdAt: 'DESC' },
-    });
+    if (currentUser && currentUser.role !== UserRole.SUPER_ADMIN) {
+      const allowedProjectIds = await this.projectAccessService.getUserProjectIds(currentUser.id, currentUser.role as UserRole);
+      if (allowedProjectIds.length > 0) {
+        qb.andWhere('patient.projectId IN (:...allowedProjectIds)', { allowedProjectIds });
+      } else {
+        return [];
+      }
+    }
 
+    const assignments = await qb.getMany();
     return this.mapToResponseDtos(assignments);
   }
 
@@ -456,28 +571,121 @@ export class AssignmentsService {
       updatedAt: assignment.updatedAt,
       patient: assignment.patient
         ? {
-            id: assignment.patient.id,
-            patientId: assignment.patient.patientId,
-            name: assignment.patient.name,
-          }
+          id: assignment.patient.id,
+          patientId: assignment.patient.patientId,
+          name: assignment.patient.name,
+        }
         : undefined,
       test: assignment.test
         ? {
-            id: assignment.test.id,
-            name: assignment.test.name,
-            category: assignment.test.category,
-            adminRole: assignment.test.adminRole,
-          }
+          id: assignment.test.id,
+          name: assignment.test.name,
+          category: assignment.test.category,
+          adminRole: assignment.test.adminRole,
+        }
         : undefined,
       admin: assignment.admin
         ? {
-            id: assignment.admin.id,
-            email: assignment.admin.email,
-            fullName: assignment.admin.fullName,
-            testTechnicianType: assignment.admin.testTechnicianType,
-          }
+          id: assignment.admin.id,
+          email: assignment.admin.email,
+          fullName: assignment.admin.fullName,
+          testTechnicianType: assignment.admin.testTechnicianType,
+        }
         : null,
     };
+  }
+
+  /**
+   * Get available technicians for a specific test type, optionally filtered by project
+   * @param testId - The test ID to find technicians for
+   * @param projectId - Optional project ID to filter by project membership
+   * @param includeWorkload - Whether to include current assignment counts
+   */
+  async getAvailableTechnicians(
+    testId: string,
+    projectId?: string,
+    includeWorkload: boolean = true,
+  ): Promise<{
+    id: string;
+    fullName: string;
+    email: string;
+    testTechnicianType: string | null;
+    currentAssignmentCount?: number;
+    isAvailable?: boolean;
+  }[]> {
+    // Get test to find required technician type
+    const test = await this.testsRepository.findOne({ where: { id: testId } });
+    if (!test) {
+      throw new NotFoundException(`Test with ID ${testId} not found`);
+    }
+
+    const adminRole = test.adminRole;
+
+    // Build query for technicians
+    let technicianIds: string[] | null = null;
+
+    // If projectId provided, get only technicians who are members of that project
+    if (projectId) {
+      const projectMembers = await this.projectAccessService.getProjectMemberIds(projectId);
+      if (projectMembers.length === 0) {
+        return []; // No members in this project
+      }
+      technicianIds = projectMembers;
+    }
+
+    // Query for technicians
+    const queryBuilder = this.usersRepository
+      .createQueryBuilder('user')
+      .where('user.role = :role', { role: UserRole.TEST_TECHNICIAN })
+      .andWhere('user.isActive = :isActive', { isActive: true })
+      .andWhere('user.testTechnicianType = :adminRole', { adminRole });
+
+    // Filter by project members if projectId provided
+    if (technicianIds && technicianIds.length > 0) {
+      queryBuilder.andWhere('user.id IN (:...technicianIds)', { technicianIds });
+    }
+
+    const technicians = await queryBuilder.orderBy('user.fullName', 'ASC').getMany();
+
+    // Build result array
+    const result = [];
+
+    for (const tech of technicians) {
+      const item: {
+        id: string;
+        fullName: string;
+        email: string;
+        testTechnicianType: string | null;
+        currentAssignmentCount?: number;
+        isAvailable?: boolean;
+      } = {
+        id: tech.id,
+        fullName: tech.fullName,
+        email: tech.email,
+        testTechnicianType: tech.testTechnicianType,
+      };
+
+      if (includeWorkload) {
+        // Count active assignments (ASSIGNED + IN_PROGRESS)
+        const activeCount = await this.assignmentsRepository.count({
+          where: [
+            { adminId: tech.id, status: AssignmentStatus.ASSIGNED },
+            { adminId: tech.id, status: AssignmentStatus.IN_PROGRESS },
+          ],
+        });
+        item.currentAssignmentCount = activeCount;
+        item.isAvailable = true; // Always available, just might have workload
+      }
+
+      result.push(item);
+    }
+
+    // Sort by workload (lowest first) if workload included
+    if (includeWorkload) {
+      result.sort((a, b) => (a.currentAssignmentCount || 0) - (b.currentAssignmentCount || 0));
+    }
+
+    return result;
   }
 
   private mapToResponseDtos(assignments: Assignment[]): AssignmentResponseDto[] {

@@ -19,10 +19,19 @@ import { Skeleton } from '@/components/common/Skeleton';
 import { ClipboardList, Play, CheckCircle, FileText, Search, User } from 'lucide-react';
 import { UpdateStatusModal } from '../UpdateStatusModal/UpdateStatusModal';
 import { useDebounce } from '@/hooks/useDebounce/useDebounce';
+import { useProjectFilter } from '@/hooks/useProjectFilter';
+import { ProjectSelector } from '@/components/common/ProjectSelector/ProjectSelector';
 
 export const MyAssignmentsDashboard: React.FC = () => {
   const router = useRouter();
   const { addToast } = useUIStore();
+  const {
+    selectedProjectId,
+    setSelectedProjectId,
+    userProjects,
+    isSuperAdmin,
+    hasMultipleProjects,
+  } = useProjectFilter();
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,10 +50,10 @@ export const MyAssignmentsDashboard: React.FC = () => {
     try {
       // Handle special case for "completed" tab - fetch all assignments and filter client-side
       if (status === 'completed') {
-        const allData = await assignmentsService.getMyAssignments(undefined);
+        const allData = await assignmentsService.getMyAssignments(undefined, selectedProjectId || undefined);
         setAssignments(allData);
       } else {
-        const data = await assignmentsService.getMyAssignments(status);
+        const data = await assignmentsService.getMyAssignments(status, selectedProjectId || undefined);
         setAssignments(data);
       }
     } catch (err) {
@@ -64,10 +73,10 @@ export const MyAssignmentsDashboard: React.FC = () => {
       selectedStatus === 'all'
         ? undefined
         : selectedStatus === 'completed'
-        ? 'completed'
-        : (selectedStatus as AssignmentStatus);
+          ? 'completed'
+          : (selectedStatus as AssignmentStatus);
     fetchAssignments(status);
-  }, [selectedStatus]);
+  }, [selectedStatus, selectedProjectId]);
 
   // Filter assignments by search query and status tab
   const filteredAssignments = useMemo(() => {
@@ -159,13 +168,13 @@ export const MyAssignmentsDashboard: React.FC = () => {
   const handleStatusUpdate = () => {
     setUpdateStatusModalOpen(false);
     setSelectedAssignment(null);
-      fetchAssignments(
-        selectedStatus === 'all'
-          ? undefined
-          : selectedStatus === 'completed'
+    fetchAssignments(
+      selectedStatus === 'all'
+        ? undefined
+        : selectedStatus === 'completed'
           ? 'completed'
           : (selectedStatus as AssignmentStatus)
-      );
+    );
   };
 
   const handleUpdateStatus = (assignmentId: string) => {
@@ -186,8 +195,8 @@ export const MyAssignmentsDashboard: React.FC = () => {
             selectedStatus === 'all'
               ? undefined
               : selectedStatus === 'completed'
-              ? 'completed'
-              : (selectedStatus as AssignmentStatus)
+                ? 'completed'
+                : (selectedStatus as AssignmentStatus)
           )
         }
       />
@@ -206,10 +215,22 @@ export const MyAssignmentsDashboard: React.FC = () => {
             Hello! Here are the tests assigned to you today.
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border shadow-sm">
-          {/* Quick status filter could go here if needed, but tabs cover it */}
-        </div>
+        {/* Project Filter */}
+        {(hasMultipleProjects || isSuperAdmin) && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Project:</span>
+            <ProjectSelector
+              selectedProjectId={selectedProjectId}
+              onSelect={setSelectedProjectId}
+              projects={userProjects}
+              showAllOption={isSuperAdmin}
+              className="w-64"
+              size="sm"
+            />
+          </div>
+        )}
       </div>
+
 
       {/* Simplified Statistics - Focus on Actionable Numbers */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -306,8 +327,8 @@ export const MyAssignmentsDashboard: React.FC = () => {
                       : selectedStatus === 'all'
                         ? "You have no tasks assigned at the moment."
                         : selectedStatus === 'completed'
-                        ? "You have no completed tasks yet."
-                        : `You have no ${selectedStatus.toLowerCase().replace('_', ' ')} tasks.`
+                          ? "You have no completed tasks yet."
+                          : `You have no ${selectedStatus.toLowerCase().replace('_', ' ')} tasks.`
                   }
                 />
               </div>

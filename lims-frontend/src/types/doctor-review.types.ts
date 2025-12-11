@@ -72,6 +72,7 @@ export interface QueryPatientsParams {
   search?: string;
   page?: number;
   limit?: number;
+  projectId?: string;
 }
 
 export interface PaginatedPatientsResponse {

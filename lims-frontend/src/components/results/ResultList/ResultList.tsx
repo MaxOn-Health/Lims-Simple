@@ -26,11 +26,20 @@ import { FileText } from 'lucide-react';
 import { Skeleton } from '@/components/common/Skeleton';
 import { VerifyResultModal } from '../VerifyResultModal/VerifyResultModal';
 import { calculateResultStatus } from '@/utils/result-helpers';
+import { useProjectFilter } from '@/hooks/useProjectFilter';
+import { ProjectSelector } from '@/components/common/ProjectSelector/ProjectSelector';
 
 export const ResultList: React.FC = () => {
   const router = useRouter();
   const { addToast } = useUIStore();
   const { user } = useAuthStore();
+  const {
+    selectedProjectId,
+    setSelectedProjectId,
+    userProjects,
+    isSuperAdmin,
+    hasMultipleProjects,
+  } = useProjectFilter();
 
   const [allResults, setAllResults] = useState<Result[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -171,7 +180,7 @@ export const ResultList: React.FC = () => {
   useEffect(() => {
     fetchAllResults();
     fetchFilterData();
-  }, [user?.role]);
+  }, [user?.role, selectedProjectId]);
 
   // Filter and search results client-side
   const filteredResults = useMemo(() => {
@@ -299,7 +308,22 @@ export const ResultList: React.FC = () => {
           </h1>
           <p className="text-muted-foreground mt-1">View and manage all test results</p>
         </div>
+        {/* Project Filter */}
+        {(hasMultipleProjects || isSuperAdmin) && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Project:</span>
+            <ProjectSelector
+              selectedProjectId={selectedProjectId}
+              onSelect={setSelectedProjectId}
+              projects={userProjects}
+              showAllOption={isSuperAdmin}
+              className="w-64"
+              size="sm"
+            />
+          </div>
+        )}
       </div>
+
 
       <Card>
         <CardHeader>

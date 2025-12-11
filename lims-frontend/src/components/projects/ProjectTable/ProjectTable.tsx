@@ -13,10 +13,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/common/Button/Button';
+import { Badge } from '@/components/ui/badge';
 import { ProjectStatusBadge } from '../ProjectStatusBadge/ProjectStatusBadge';
 import { HasRole } from '@/components/common/HasRole';
 import { UserRole } from '@/types/user.types';
-import { Eye, Edit, Trash2 } from 'lucide-react';
+import { formatDateRange } from '@/utils/date-helpers';
+import { Eye, Edit, Trash2, Users } from 'lucide-react';
 import { IndianRupee } from 'lucide-react';
 
 interface ProjectTableProps {
@@ -57,12 +59,12 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({
         <TableRow>
           <TableHead className="font-semibold">Name</TableHead>
           <TableHead className="font-semibold">Company</TableHead>
-          <TableHead className="font-semibold">Camp Date</TableHead>
+          <TableHead className="font-semibold">Date Range</TableHead>
           <TableHead className="font-semibold">Location</TableHead>
           <TableHead className="font-semibold">Patients</TableHead>
+          <TableHead className="font-semibold">Team</TableHead>
           <TableHead className="font-semibold">Revenue</TableHead>
           <TableHead className="font-semibold">Status</TableHead>
-          <TableHead className="font-semibold">Created Date</TableHead>
           <HasRole allowedRoles={[UserRole.SUPER_ADMIN]}>
             <TableHead className="font-semibold text-right">Actions</TableHead>
           </HasRole>
@@ -86,7 +88,7 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({
             </TableCell>
             <TableCell>
               <span className="text-sm">
-                {project.campDate ? format(new Date(project.campDate), 'MMM dd, yyyy') : '—'}
+                {formatDateRange(project.startDate, project.endDate) || '—'}
               </span>
             </TableCell>
             <TableCell>
@@ -98,6 +100,12 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({
               <span className="text-sm font-medium">{project.patientCount}</span>
             </TableCell>
             <TableCell>
+              <div className="flex items-center gap-1">
+                <Users className="h-3 w-3 text-muted-foreground" />
+                <span className="text-sm">{project.memberCount ?? '—'}</span>
+              </div>
+            </TableCell>
+            <TableCell>
               <span className="text-sm font-medium flex items-center gap-1">
                 <IndianRupee className="w-3 h-3" />
                 {Number(project.totalRevenue).toFixed(2)}
@@ -105,11 +113,6 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({
             </TableCell>
             <TableCell>
               <ProjectStatusBadge status={project.status} />
-            </TableCell>
-            <TableCell>
-              <span className="text-sm text-muted-foreground">
-                {format(new Date(project.createdAt), 'MMM dd, yyyy')}
-              </span>
             </TableCell>
             <HasRole allowedRoles={[UserRole.SUPER_ADMIN]}>
               <TableCell className="text-right">
@@ -141,4 +144,3 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({
     </Table>
   );
 };
-

@@ -5,11 +5,18 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { Patient } from './entities/patient.entity';
 import { PatientPackage } from './entities/patient-package.entity';
+import { ProjectAccessService } from '../../common/services/project-access.service';
 import { Test as TestEntity } from '../tests/entities/test.entity';
 import { Package } from '../packages/entities/package.entity';
+import { PackageTest } from '../packages/entities/package-test.entity';
 import { PatientIdService } from './services/patient-id.service';
 import { PriceCalculationService } from './services/price-calculation.service';
 import { AuditService } from '../audit/audit.service';
+import { Assignment } from '../assignments/entities/assignment.entity';
+import { TestResult } from '../results/entities/test-result.entity';
+import { BloodSample } from '../blood-samples/entities/blood-sample.entity';
+import { ProjectsService } from '../projects/projects.service';
+import { AssignmentsService } from '../assignments/assignments.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
@@ -25,6 +32,7 @@ describe('PatientsService', () => {
   let patientIdService: PatientIdService;
   let priceCalculationService: PriceCalculationService;
   let auditService: AuditService;
+  let projectAccessService: ProjectAccessService;
 
   const mockPatient: Patient = {
     id: 'patient-1',
@@ -95,6 +103,44 @@ describe('PatientsService', () => {
           },
         },
         {
+          provide: ProjectAccessService,
+          useValue: {
+            canAccessProject: jest.fn().mockResolvedValue(true),
+            getUserProjectIds: jest.fn().mockResolvedValue(['project-1']),
+          },
+        },
+        {
+          provide: getRepositoryToken(Assignment),
+          useValue: {
+            find: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(TestResult),
+          useValue: {
+            find: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(BloodSample),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: ProjectsService,
+          useValue: {
+            findById: jest.fn(),
+            updateStatistics: jest.fn(),
+          },
+        },
+        {
+          provide: AssignmentsService,
+          useValue: {
+            autoAssign: jest.fn(),
+          },
+        },
+        {
           provide: getRepositoryToken(TestEntity),
           useValue: {
             find: jest.fn(),
@@ -104,6 +150,12 @@ describe('PatientsService', () => {
           provide: getRepositoryToken(Package),
           useValue: {
             findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(PackageTest),
+          useValue: {
+            find: jest.fn(),
           },
         },
         {

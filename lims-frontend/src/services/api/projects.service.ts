@@ -1,8 +1,10 @@
 import apiClient from './api.client';
 import {
   Project,
+  ProjectMember,
   CreateProjectRequest,
   UpdateProjectRequest,
+  AddMemberRequest,
   QueryProjectsParams,
   PaginatedProjectsResponse,
 } from '../../types/project.types';
@@ -15,8 +17,8 @@ export const projectsService = {
     if (query?.search) params.append('search', query.search);
     if (query?.status) params.append('status', query.status);
     if (query?.companyName) params.append('companyName', query.companyName);
-    if (query?.campDateFrom) params.append('campDateFrom', query.campDateFrom);
-    if (query?.campDateTo) params.append('campDateTo', query.campDateTo);
+    if (query?.startDateFrom) params.append('startDateFrom', query.startDateFrom);
+    if (query?.startDateTo) params.append('startDateTo', query.startDateTo);
 
     const response = await apiClient.get<PaginatedProjectsResponse>(
       `/projects${params.toString() ? `?${params.toString()}` : ''}`
@@ -53,5 +55,28 @@ export const projectsService = {
     const response = await apiClient.delete<{ message: string }>(`/projects/${id}`);
     return response.data;
   },
-};
 
+  // Member management methods
+  async getProjectMembers(projectId: string): Promise<ProjectMember[]> {
+    const response = await apiClient.get<ProjectMember[]>(`/projects/${projectId}/members`);
+    return response.data;
+  },
+
+  async addProjectMember(projectId: string, data: AddMemberRequest): Promise<ProjectMember> {
+    const response = await apiClient.post<ProjectMember>(`/projects/${projectId}/members`, data);
+    return response.data;
+  },
+
+  async removeProjectMember(projectId: string, userId: string): Promise<{ message: string }> {
+    const response = await apiClient.delete<{ message: string }>(
+      `/projects/${projectId}/members/${userId}`
+    );
+    return response.data;
+  },
+
+  // Get projects for current user
+  async getMyProjects(): Promise<Project[]> {
+    const response = await apiClient.get<Project[]>('/projects/my-projects');
+    return response.data;
+  },
+};

@@ -35,5 +35,13 @@ export class QueryAssignmentsDto {
   @IsOptional()
   @IsUUID()
   testId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Filter by project ID',
+    example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
+  })
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
 }
 

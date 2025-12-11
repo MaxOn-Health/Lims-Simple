@@ -31,7 +31,7 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 @ApiBearerAuth('JWT-auth')
 @UseGuards(RolesGuard)
 export class ResultsController {
-  constructor(private readonly resultsService: ResultsService) {}
+  constructor(private readonly resultsService: ResultsService) { }
 
   @Post('submit')
   @Roles(UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN)
@@ -52,7 +52,8 @@ export class ResultsController {
     @Body() submitResultDto: SubmitResultDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<ResultResponseDto> {
-    return this.resultsService.submitResult(submitResultDto, user.userId);
+    const currentUser = { id: user.userId, role: user.role } as any;
+    return this.resultsService.submitResult(submitResultDto, currentUser);
   }
 
   @Get('assignment/:assignmentId')
@@ -64,8 +65,12 @@ export class ResultsController {
     type: ResultResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Result not found' })
-  async findByAssignment(@Param('assignmentId') assignmentId: string): Promise<ResultResponseDto> {
-    return this.resultsService.findByAssignment(assignmentId);
+  async findByAssignment(
+    @Param('assignmentId') assignmentId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<ResultResponseDto> {
+    const currentUser = { id: user.userId, role: user.role } as any;
+    return this.resultsService.findByAssignment(assignmentId, currentUser);
   }
 
   @Get('patient/:patientId')
@@ -76,8 +81,12 @@ export class ResultsController {
     description: 'List of results for patient',
     type: [ResultResponseDto],
   })
-  async findByPatient(@Param('patientId') patientId: string): Promise<ResultResponseDto[]> {
-    return this.resultsService.findByPatient(patientId);
+  async findByPatient(
+    @Param('patientId') patientId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<ResultResponseDto[]> {
+    const currentUser = { id: user.userId, role: user.role } as any;
+    return this.resultsService.findByPatient(patientId, currentUser);
   }
 
   @Get(':id')
@@ -89,8 +98,12 @@ export class ResultsController {
     type: ResultResponseDto,
   })
   @ApiResponse({ status: 404, description: 'Result not found' })
-  async findOne(@Param('id') id: string): Promise<ResultResponseDto> {
-    return this.resultsService.findOne(id);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<ResultResponseDto> {
+    const currentUser = { id: user.userId, role: user.role } as any;
+    return this.resultsService.findOne(id, currentUser);
   }
 
   @Put(':id')

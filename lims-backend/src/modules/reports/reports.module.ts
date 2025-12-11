@@ -15,6 +15,7 @@ import { AssignmentsModule } from '../assignments/assignments.module';
 import { ResultsModule } from '../results/results.module';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
+import { ProjectsModule } from '../projects/projects.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { AuthModule } from '../auth/auth.module';
     AssignmentsModule,
     ResultsModule,
     AuditModule,
+    ProjectsModule,
   ],
   controllers: [ReportsController],
   providers: [
@@ -40,5 +42,5 @@ import { AuthModule } from '../auth/auth.module';
   ],
   exports: [ReportsService],
 })
-export class ReportsModule {}
+export class ReportsModule { }
 

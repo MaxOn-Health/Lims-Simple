@@ -38,7 +38,7 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 @ApiBearerAuth('JWT-auth')
 @UseGuards(RolesGuard)
 export class PatientsController {
-  constructor(private readonly patientsService: PatientsService) {}
+  constructor(private readonly patientsService: PatientsService) { }
 
   @Post('register')
   @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN)
@@ -64,8 +64,13 @@ export class PatientsController {
   @ApiQuery({ name: 'dateFrom', required: false, type: String })
   @ApiQuery({ name: 'dateTo', required: false, type: String })
   @ApiResponse({ status: 200, description: 'Paginated list of patients', type: PaginatedPatientsResponseDto })
-  async findAll(@Query() query: QueryPatientsDto): Promise<PaginatedPatientsResponseDto> {
-    return this.patientsService.findAll(query);
+  async findAll(
+    @Query() query: QueryPatientsDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<PaginatedPatientsResponseDto> {
+    // Map JwtPayload to User-like object with id and role
+    const currentUser = { id: user.userId, role: user.role } as any;
+    return this.patientsService.findAll(query, currentUser);
   }
 
   @Get('progress')
@@ -87,8 +92,12 @@ export class PatientsController {
   @ApiParam({ name: 'id', description: 'Patient UUID' })
   @ApiResponse({ status: 200, description: 'Patient details with package info', type: PatientResponseDto })
   @ApiResponse({ status: 404, description: 'Patient not found' })
-  async findOne(@Param('id') id: string): Promise<PatientResponseDto> {
-    return this.patientsService.findById(id);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<PatientResponseDto> {
+    const currentUser = { id: user.userId, role: user.role } as any;
+    return this.patientsService.findById(id, currentUser);
   }
 
   @Get('by-patient-id/:patientId')
@@ -96,8 +105,12 @@ export class PatientsController {
   @ApiParam({ name: 'patientId', description: 'Patient ID (e.g., PAT-20241110-0001)' })
   @ApiResponse({ status: 200, description: 'Patient details', type: PatientResponseDto })
   @ApiResponse({ status: 404, description: 'Patient not found' })
-  async findByPatientId(@Param('patientId') patientId: string): Promise<PatientResponseDto> {
-    return this.patientsService.findByPatientId(patientId);
+  async findByPatientId(
+    @Param('patientId') patientId: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<PatientResponseDto> {
+    const currentUser = { id: user.userId, role: user.role } as any;
+    return this.patientsService.findByPatientId(patientId, currentUser);
   }
 
   @Put(':id')

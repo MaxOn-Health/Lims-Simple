@@ -1,3 +1,5 @@
+import { UserRole } from './user.types';
+
 export enum ProjectStatus {
   ACTIVE = 'ACTIVE',
   COMPLETED = 'COMPLETED',
@@ -5,11 +7,33 @@ export enum ProjectStatus {
   SCHEDULED = 'SCHEDULED',
 }
 
+export enum RoleInProject {
+  ADMIN = 'ADMIN',
+  MEMBER = 'MEMBER',
+  VIEWER = 'VIEWER',
+}
+
 export interface CampSettings {
   autoGeneratePatientIds?: boolean;
   patientIdPrefix?: string;
   requireEmployeeId?: boolean;
   defaultPackageId?: string;
+}
+
+export interface ProjectMember {
+  id: string;
+  userId: string;
+  projectId: string;
+  roleInProject: RoleInProject;
+  user?: {
+    id: string;
+    email: string;
+    fullName: string;
+    role: UserRole;
+    testTechnicianType?: string | null;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Project {
@@ -20,13 +44,16 @@ export interface Project {
   contactPerson?: string | null;
   contactNumber?: string | null;
   contactEmail?: string | null;
-  campDate?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
   campLocation?: string | null;
   campSettings?: CampSettings | null;
   patientCount: number;
   totalRevenue: number;
   status: ProjectStatus;
   notes?: string | null;
+  members?: ProjectMember[];
+  memberCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,10 +65,12 @@ export interface CreateProjectRequest {
   contactPerson?: string;
   contactNumber?: string;
   contactEmail?: string;
-  campDate?: string;
+  startDate?: string;
+  endDate?: string;
   campLocation?: string;
   campSettings?: CampSettings;
   notes?: string;
+  memberIds?: string[];
 }
 
 export interface UpdateProjectRequest {
@@ -51,10 +80,16 @@ export interface UpdateProjectRequest {
   contactPerson?: string;
   contactNumber?: string;
   contactEmail?: string;
-  campDate?: string;
+  startDate?: string;
+  endDate?: string;
   campLocation?: string;
   campSettings?: CampSettings;
   notes?: string;
+}
+
+export interface AddMemberRequest {
+  userId: string;
+  roleInProject?: RoleInProject;
 }
 
 export interface QueryProjectsParams {
@@ -63,8 +98,8 @@ export interface QueryProjectsParams {
   search?: string;
   status?: ProjectStatus;
   companyName?: string;
-  campDateFrom?: string;
-  campDateTo?: string;
+  startDateFrom?: string;
+  startDateTo?: string;
 }
 
 export interface PaginatedProjectsResponse {
@@ -76,4 +111,3 @@ export interface PaginatedProjectsResponse {
     totalPages: number;
   };
 }
-

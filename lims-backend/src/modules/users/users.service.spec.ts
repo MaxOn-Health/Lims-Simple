@@ -4,11 +4,15 @@ import { Repository } from 'typeorm';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User, UserRole } from './entities/user.entity';
+import { ProjectMember } from '../projects/entities/project-member.entity';
+import { ProjectAccessService } from '../../common/services/project-access.service';
 import { QueryUsersDto } from './dto/query-users.dto';
 
 describe('UsersService', () => {
   let service: UsersService;
   let repository: Repository<User>;
+  let projectMemberRepository: Repository<ProjectMember>;
+  let projectAccessService: ProjectAccessService;
 
   const mockUser: User = {
     id: '123',
@@ -40,11 +44,24 @@ describe('UsersService', () => {
           provide: getRepositoryToken(User),
           useValue: mockRepository,
         },
+        {
+          provide: getRepositoryToken(ProjectMember),
+          useValue: mockRepository, // Reuse mockRepository for simplicity as find methods are similar
+        },
+        {
+          provide: ProjectAccessService,
+          useValue: {
+            getUserProjectIds: jest.fn(),
+            canAccessProject: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
     repository = module.get<Repository<User>>(getRepositoryToken(User));
+    projectMemberRepository = module.get<Repository<ProjectMember>>(getRepositoryToken(ProjectMember));
+    projectAccessService = module.get<ProjectAccessService>(ProjectAccessService);
   });
 
   afterEach(() => {

@@ -10,7 +10,9 @@ import { Test } from '../tests/entities/test.entity';
 import { Package } from '../packages/entities/package.entity';
 import { PackageTest } from '../packages/entities/package-test.entity';
 import { User } from '../users/entities/user.entity';
+import { ProjectMember } from '../projects/entities/project-member.entity';
 import { AuditModule } from '../audit/audit.module';
+import { ProjectsModule } from '../projects/projects.module';
 
 @Module({
   imports: [
@@ -22,8 +24,10 @@ import { AuditModule } from '../audit/audit.module';
       Package,
       PackageTest,
       User,
+      ProjectMember,
     ]),
     AuditModule,
+    ProjectsModule,
   ],
   providers: [AssignmentsService, AdminSelectionService],
   controllers: [AssignmentsController],

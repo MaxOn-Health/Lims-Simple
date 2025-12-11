@@ -17,13 +17,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { projectsService } from '@/services/api/projects.service';
 import { packagesService } from '@/services/api/packages.service';
 import { Package } from '@/types/package.types';
 import { useUIStore } from '@/store/ui.store';
 import { getErrorMessage } from '@/utils/error-handler';
 import { ApiError } from '@/types/api.types';
+import { Calendar, MapPin, Users } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -51,6 +51,16 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
 
   const schema = isEditMode ? updateProjectSchema : createProjectSchema;
 
+  // Helper to format date for input field
+  const formatDateForInput = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '';
+    try {
+      return dateStr.split('T')[0]; // Handle ISO format
+    } catch {
+      return '';
+    }
+  };
+
   const {
     register,
     handleSubmit,
@@ -61,27 +71,27 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     resolver: zodResolver(schema),
     defaultValues: isEditMode
       ? {
-          name: project.name,
-          description: project.description,
-          companyName: project.companyName || undefined,
-          contactPerson: project.contactPerson || undefined,
-          contactNumber: project.contactNumber || undefined,
-          contactEmail: project.contactEmail || undefined,
-          campDate: project.campDate || undefined,
-          campLocation: project.campLocation || undefined,
-          campSettings: project.campSettings || undefined,
-          notes: project.notes || undefined,
-        }
+        name: project.name,
+        description: project.description,
+        companyName: project.companyName || undefined,
+        contactPerson: project.contactPerson || undefined,
+        contactNumber: project.contactNumber || undefined,
+        contactEmail: project.contactEmail || undefined,
+        startDate: formatDateForInput(project.startDate),
+        endDate: formatDateForInput(project.endDate),
+        campLocation: project.campLocation || undefined,
+        campSettings: project.campSettings || undefined,
+        notes: project.notes || undefined,
+      }
       : {
-          campSettings: {
-            autoGeneratePatientIds: false,
-            requireEmployeeId: false,
-          },
+        campSettings: {
+          autoGeneratePatientIds: false,
+          requireEmployeeId: false,
         },
+      },
   });
 
   const autoGenerateIds = watch('campSettings.autoGeneratePatientIds');
-  const requireEmployeeId = watch('campSettings.requireEmployeeId');
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -219,32 +229,54 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
         </CardContent>
       </Card>
 
-      {/* Camp Information */}
+      {/* Camp/Project Date & Location */}
       <Card>
         <CardHeader>
-          <CardTitle>Camp Information</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Date & Location
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Input
-                id="campDate"
+                id="startDate"
                 type="date"
-                label="Camp Date"
-                error={errors.campDate?.message}
-                {...register('campDate')}
+                label="Start Date"
+                error={errors.startDate?.message}
+                {...register('startDate')}
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                When the camp/project begins
+              </p>
             </div>
 
             <div>
               <Input
-                id="campLocation"
-                label="Camp Location"
-                placeholder="Enter camp location"
-                error={errors.campLocation?.message}
-                {...register('campLocation')}
+                id="endDate"
+                type="date"
+                label="End Date"
+                error={errors.endDate?.message}
+                {...register('endDate')}
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Leave empty for ongoing projects
+              </p>
             </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="campLocation">Location</Label>
+            </div>
+            <Input
+              id="campLocation"
+              placeholder="Enter camp location"
+              error={errors.campLocation?.message}
+              {...register('campLocation')}
+            />
           </div>
         </CardContent>
       </Card>
@@ -368,4 +400,3 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
     </form>
   );
 };
-

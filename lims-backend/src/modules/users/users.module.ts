@@ -5,9 +5,10 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { PasswordService } from '../../common/services/password.service';
 import { AuditModule } from '../audit/audit.module';
+import { ProjectsModule } from '../projects/projects.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), AuditModule],
+  imports: [TypeOrmModule.forFeature([User]), AuditModule, ProjectsModule],
   controllers: [UsersController],
   providers: [UsersService, PasswordService],
   exports: [UsersService, TypeOrmModule],

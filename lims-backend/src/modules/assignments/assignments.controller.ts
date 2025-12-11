@@ -24,6 +24,8 @@ import { ReassignAssignmentDto } from './dto/reassign-assignment.dto';
 import { UpdateAssignmentStatusDto } from './dto/update-assignment-status.dto';
 import { QueryAssignmentsDto } from './dto/query-assignments.dto';
 import { AssignmentResponseDto } from './dto/assignment-response.dto';
+import { AvailableTechnicianDto } from './dto/available-technician.dto';
+import { AutoAssignRequestDto, AutoAssignPreviewItemDto } from './dto/auto-assign.dto';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -36,6 +38,23 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 @UseGuards(RolesGuard)
 export class AssignmentsController {
   constructor(private readonly assignmentsService: AssignmentsService) { }
+
+  @Get('auto-assign/:patientId/preview')
+  @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Preview auto-assignment plan for a patient (RECEPTIONIST, SUPER_ADMIN only)' })
+  @ApiParam({ name: 'patientId', description: 'Patient UUID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Preview of assignments to be created',
+    type: [AutoAssignPreviewItemDto],
+  })
+  @ApiResponse({ status: 403, description: 'Forbidden - RECEPTIONIST or SUPER_ADMIN only' })
+  @ApiResponse({ status: 404, description: 'Patient not found' })
+  async previewAutoAssign(
+    @Param('patientId') patientId: string,
+  ): Promise<AutoAssignPreviewItemDto[]> {
+    return this.assignmentsService.previewAutoAssign(patientId);
+  }
 
   @Post('auto-assign/:patientId')
   @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN)
@@ -52,9 +71,14 @@ export class AssignmentsController {
   @ApiResponse({ status: 404, description: 'Patient not found' })
   async autoAssign(
     @Param('patientId') patientId: string,
+    @Body() request: AutoAssignRequestDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<AssignmentResponseDto[]> {
-    return this.assignmentsService.autoAssign(patientId, user.userId);
+    return this.assignmentsService.autoAssign(
+      patientId,
+      user.userId,
+      request.overrides || {}
+    );
   }
 
   @Post('manual-assign')
@@ -73,7 +97,7 @@ export class AssignmentsController {
     @Body() createAssignmentDto: CreateAssignmentDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<AssignmentResponseDto> {
-    return this.assignmentsService.manualAssign(createAssignmentDto, user.userId);
+    return this.assignmentsService.manualAssign(createAssignmentDto, user.userId, user.role);
   }
 
   @Put(':id/reassign')
@@ -93,7 +117,7 @@ export class AssignmentsController {
     @Body() reassignDto: ReassignAssignmentDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<AssignmentResponseDto> {
-    return this.assignmentsService.reassign(id, reassignDto, user.userId);
+    return this.assignmentsService.reassign(id, reassignDto, user.userId, user.role);
   }
 
   @Get()
@@ -111,8 +135,56 @@ export class AssignmentsController {
     type: [AssignmentResponseDto],
   })
   @ApiResponse({ status: 403, description: 'Forbidden - RECEPTIONIST or SUPER_ADMIN only' })
-  async findAll(@Query() queryDto: QueryAssignmentsDto): Promise<AssignmentResponseDto[]> {
-    return this.assignmentsService.findAll(queryDto);
+  @ApiResponse({ status: 403, description: 'Forbidden - RECEPTIONIST or SUPER_ADMIN only' })
+  async findAll(
+    @Query() queryDto: QueryAssignmentsDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<AssignmentResponseDto[]> {
+    const currentUser = { id: user.userId, role: user.role } as any;
+    return this.assignmentsService.findAll(queryDto, currentUser);
+  }
+
+  @Get('available-technicians')
+  @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN)
+  @ApiOperation({
+    summary: 'Get available technicians for a test type, optionally filtered by project',
+  })
+  @ApiQuery({
+    name: 'testId',
+    required: true,
+    type: String,
+    description: 'Test ID to find matching technicians for',
+  })
+  @ApiQuery({
+    name: 'projectId',
+    required: false,
+    type: String,
+    description: 'Filter by project membership',
+  })
+  @ApiQuery({
+    name: 'includeWorkload',
+    required: false,
+    type: Boolean,
+    description: 'Include current assignment workload info (default: true)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of available technicians with workload info',
+    type: [AvailableTechnicianDto],
+  })
+  @ApiResponse({ status: 403, description: 'Forbidden - RECEPTIONIST or SUPER_ADMIN only' })
+  @ApiResponse({ status: 404, description: 'Test not found' })
+  async getAvailableTechnicians(
+    @Query('testId') testId: string,
+    @Query('projectId') projectId?: string,
+    @Query('includeWorkload') includeWorkload?: string,
+  ): Promise<AvailableTechnicianDto[]> {
+    const includeWorkloadBool = includeWorkload !== 'false';
+    return this.assignmentsService.getAvailableTechnicians(
+      testId,
+      projectId,
+      includeWorkloadBool,
+    );
   }
 
   @Get('patient/:patientId')
@@ -144,7 +216,8 @@ export class AssignmentsController {
     @CurrentUser() user: JwtPayload,
   ): Promise<AssignmentResponseDto[]> {
     const statusEnum = status ? (status as any) : undefined;
-    return this.assignmentsService.findByAdmin(user.userId, statusEnum);
+    const currentUser = { id: user.userId, role: user.role } as any;
+    return this.assignmentsService.findByAdmin(user.userId, statusEnum, currentUser);
   }
 
   @Put(':id/status')

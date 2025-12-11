@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { JwtTokenService } from './jwt.service';
+import { TokenBlacklistService } from './token-blacklist.service';
 import { JwtPayload } from '../../modules/auth/interfaces/jwt-payload.interface';
 
 describe('JwtTokenService', () => {
@@ -17,6 +18,7 @@ describe('JwtTokenService', () => {
           useValue: {
             signAsync: jest.fn(),
             verifyAsync: jest.fn(),
+            decode: jest.fn(),
           },
         },
         {
@@ -31,6 +33,13 @@ describe('JwtTokenService', () => {
               };
               return config[key];
             }),
+          },
+        },
+        {
+          provide: TokenBlacklistService,
+          useValue: {
+            isBlacklisted: jest.fn().mockReturnValue(false),
+            addToBlacklist: jest.fn(),
           },
         },
       ],

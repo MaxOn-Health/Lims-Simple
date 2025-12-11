@@ -23,8 +23,11 @@ export class ProjectResponseDto {
   @ApiPropertyOptional({ description: 'Contact email', example: 'contact@techcorp.com' })
   contactEmail?: string | null;
 
-  @ApiPropertyOptional({ description: 'Camp date', example: '2025-12-20' })
-  campDate?: Date | null;
+  @ApiPropertyOptional({ description: 'Project start date', example: '2025-12-20' })
+  startDate?: Date | null;
+
+  @ApiPropertyOptional({ description: 'Project end date', example: '2025-12-23' })
+  endDate?: Date | null;
 
   @ApiPropertyOptional({ description: 'Camp location', example: 'TechCorp HQ, Bangalore' })
   campLocation?: string | null;

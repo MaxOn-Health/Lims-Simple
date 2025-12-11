@@ -1,16 +1,22 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindManyOptions } from 'typeorm';
+import { Repository, Like, FindManyOptions, In } from 'typeorm';
 import { User } from './entities/user.entity';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { PaginatedUsersResponseDto, PaginationMetaDto } from './dto/paginated-users-response.dto';
+import { ProjectMember } from '../projects/entities/project-member.entity';
+import { ProjectAccessService } from '../../common/services/project-access.service';
+import { UserRole } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) {}
+    @InjectRepository(ProjectMember)
+    private projectMembersRepository: Repository<ProjectMember>,
+    private projectAccessService: ProjectAccessService,
+  ) { }
 
   async findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email } });
@@ -53,21 +59,9 @@ export class UsersService {
     return this.usersRepository.find();
   }
 
-  async findAllPaginated(query: QueryUsersDto): Promise<PaginatedUsersResponseDto> {
+  async findAllPaginated(query: QueryUsersDto, currentUserId?: string, currentUserRole?: UserRole): Promise<PaginatedUsersResponseDto> {
     const { page = 1, limit = 10, role, search } = query;
     const skip = (page - 1) * limit;
-
-    const where: FindManyOptions<User>['where'] = {};
-
-    if (role) {
-      where.role = role;
-    }
-
-    if (search) {
-      where.email = Like(`%${search}%`);
-      // Note: TypeORM doesn't support OR conditions easily in where clause
-      // We'll use a query builder for search
-    }
 
     let queryBuilder = this.usersRepository.createQueryBuilder('user');
 
@@ -86,6 +80,40 @@ export class UsersService {
           '(user.email ILIKE :search OR user.fullName ILIKE :search)',
           { search: `%${search}%` },
         );
+      }
+    }
+
+    // Project filtering (if not SUPER_ADMIN and context provided)
+    if (currentUserId && currentUserRole && currentUserRole !== UserRole.SUPER_ADMIN) {
+      const allowedProjectIds = await this.projectAccessService.getUserProjectIds(currentUserId, currentUserRole);
+
+      if (allowedProjectIds.length === 0) {
+        return {
+          data: [],
+          meta: { page, limit, total: 0, totalPages: 0 },
+        };
+      }
+
+      // Find users who are members of these projects
+      const projectMembers = await this.projectMembersRepository.find({
+        where: { projectId: In(allowedProjectIds) },
+        select: ['userId'],
+      });
+
+      const allowedUserIds = projectMembers.map(pm => pm.userId);
+
+      // Also include self
+      if (!allowedUserIds.includes(currentUserId)) {
+        allowedUserIds.push(currentUserId);
+      }
+
+      if (allowedUserIds && allowedUserIds.length > 0) {
+        queryBuilder = queryBuilder.andWhere('user.id IN (:...allowedUserIds)', { allowedUserIds });
+      } else {
+        return {
+          data: [],
+          meta: { page, limit, total: 0, totalPages: 0 },
+        };
       }
     }
 

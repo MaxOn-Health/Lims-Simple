@@ -1,4 +1,9 @@
-<!-- 4e36bc1b-a8c4-4725-bc2a-b4cb88de0646 0358595e-b483-443b-bddf-092cdea924ba -->
+---
+name: "Phase 7: Blood Test Workflow Implementation Plan"
+overview: ""
+todos: []
+---
+
 # Phase 7: Blood Test Workflow Implementation Plan
 
 ## Overview

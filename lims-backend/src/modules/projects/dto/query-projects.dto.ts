@@ -59,19 +59,19 @@ export class QueryProjectsDto {
   companyName?: string;
 
   @ApiPropertyOptional({
-    description: 'Filter from camp date',
+    description: 'Filter from start date',
     example: '2025-01-01',
   })
   @IsOptional()
   @IsDateString()
-  campDateFrom?: string;
+  startDateFrom?: string;
 
   @ApiPropertyOptional({
-    description: 'Filter to camp date',
+    description: 'Filter to start date',
     example: '2025-12-31',
   })
   @IsOptional()
   @IsDateString()
-  campDateTo?: string;
+  startDateTo?: string;
 }
 

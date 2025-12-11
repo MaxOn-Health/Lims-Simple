@@ -14,7 +14,9 @@ import { SubmitResultDto } from './dto/submit-result.dto';
 import { UpdateResultDto } from './dto/update-result.dto';
 import { ResultResponseDto } from './dto/result-response.dto';
 import { ResultValidationService } from './services/result-validation.service';
+// Removed duplicate ResultValidationService import
 import { AuditService } from '../audit/audit.service';
+import { ProjectAccessService } from '../../common/services/project-access.service';
 
 @Injectable()
 export class ResultsService {
@@ -27,9 +29,11 @@ export class ResultsService {
     private usersRepository: Repository<User>,
     private resultValidationService: ResultValidationService,
     private auditService: AuditService,
-  ) {}
+    private projectAccessService: ProjectAccessService,
+  ) { }
 
-  async submitResult(dto: SubmitResultDto, userId: string): Promise<ResultResponseDto> {
+  async submitResult(dto: SubmitResultDto, currentUser: { id: string, role: string }): Promise<ResultResponseDto> {
+    const userId = currentUser.id;
     // Get assignment with test
     const assignment = await this.assignmentsRepository.findOne({
       where: { id: dto.assignmentId },
@@ -38,6 +42,10 @@ export class ResultsService {
 
     if (!assignment) {
       throw new NotFoundException(`Assignment with ID ${dto.assignmentId} not found`);
+    }
+
+    if (assignment.patient?.projectId && !(await this.projectAccessService.canAccessProject(userId, assignment.patient.projectId, currentUser.role as UserRole))) {
+      throw new ForbiddenException('You do not have access to this project');
     }
 
     // Validate assignment belongs to current user
@@ -122,7 +130,7 @@ export class ResultsService {
     return response;
   }
 
-  async findByAssignment(assignmentId: string): Promise<ResultResponseDto> {
+  async findByAssignment(assignmentId: string, currentUser?: { id: string, role: string }): Promise<ResultResponseDto> {
     const result = await this.testResultsRepository.findOne({
       where: { assignmentId },
       relations: ['assignment', 'assignment.test', 'assignment.patient', 'enteredByUser', 'verifiedByUser'],
@@ -132,10 +140,22 @@ export class ResultsService {
       throw new NotFoundException(`Result for assignment ${assignmentId} not found`);
     }
 
+    if (result.assignment?.patient?.projectId && currentUser && !(await this.projectAccessService.canAccessProject(currentUser.id, result.assignment.patient.projectId, currentUser.role as UserRole))) {
+      throw new ForbiddenException('You do not have access to this project');
+    }
+
     return this.mapToResponseDto(result);
   }
 
-  async findByPatient(patientId: string): Promise<ResultResponseDto[]> {
+  async findByPatient(patientId: string, currentUser?: { id: string, role: string }): Promise<ResultResponseDto[]> {
+    // Check access to patient first
+    const patientProject = await this.assignmentsRepository.manager.query(`SELECT "projectId" FROM patients WHERE id = $1`, [patientId]);
+    if (patientProject.length > 0 && patientProject[0].projectId && currentUser && !(await this.projectAccessService.canAccessProject(currentUser.id, patientProject[0].projectId, currentUser.role as UserRole))) {
+      // Alternatively return empty array or throw Forbidden
+      // Usually return empty for list queries, but findByPatient is specific target?
+      // If I specifically ask for a patient I shouldn't see, Forbidden is appropriate.
+      throw new ForbiddenException('You do not have access to this patient project');
+    }
     // Get all assignments for patient
     const assignments = await this.assignmentsRepository.find({
       where: { patientId },
@@ -158,7 +178,7 @@ export class ResultsService {
     return results.map((result) => this.mapToResponseDto(result));
   }
 
-  async findOne(id: string): Promise<ResultResponseDto> {
+  async findOne(id: string, currentUser?: { id: string, role: string }): Promise<ResultResponseDto> {
     const result = await this.testResultsRepository.findOne({
       where: { id },
       relations: ['assignment', 'assignment.test', 'assignment.patient', 'enteredByUser', 'verifiedByUser'],
@@ -166,6 +186,10 @@ export class ResultsService {
 
     if (!result) {
       throw new NotFoundException(`Result with ID ${id} not found`);
+    }
+
+    if (result.assignment?.patient?.projectId && currentUser && !(await this.projectAccessService.canAccessProject(currentUser.id, result.assignment.patient.projectId, currentUser.role as UserRole))) {
+      throw new ForbiddenException('You do not have access to this project');
     }
 
     return this.mapToResponseDto(result);
@@ -285,40 +309,40 @@ export class ResultsService {
       updatedAt: result.updatedAt,
       assignment: result.assignment
         ? {
-            id: result.assignment.id,
-            patientId: result.assignment.patientId,
-            testId: result.assignment.testId,
-            adminId: result.assignment.adminId,
-            status: result.assignment.status,
-          }
+          id: result.assignment.id,
+          patientId: result.assignment.patientId,
+          testId: result.assignment.testId,
+          adminId: result.assignment.adminId,
+          status: result.assignment.status,
+        }
         : undefined,
       test: result.assignment?.test
         ? {
-            id: result.assignment.test.id,
-            name: result.assignment.test.name,
-            category: result.assignment.test.category,
-          }
+          id: result.assignment.test.id,
+          name: result.assignment.test.name,
+          category: result.assignment.test.category,
+        }
         : undefined,
       patient: result.assignment?.patient
         ? {
-            id: result.assignment.patient.id,
-            patientId: result.assignment.patient.patientId,
-            name: result.assignment.patient.name,
-          }
+          id: result.assignment.patient.id,
+          patientId: result.assignment.patient.patientId,
+          name: result.assignment.patient.name,
+        }
         : undefined,
       enteredByUser: result.enteredByUser
         ? {
-            id: result.enteredByUser.id,
-            email: result.enteredByUser.email,
-            fullName: result.enteredByUser.fullName,
-          }
+          id: result.enteredByUser.id,
+          email: result.enteredByUser.email,
+          fullName: result.enteredByUser.fullName,
+        }
         : undefined,
       verifiedByUser: result.verifiedByUser
         ? {
-            id: result.verifiedByUser.id,
-            email: result.verifiedByUser.email,
-            fullName: result.verifiedByUser.fullName,
-          }
+          id: result.verifiedByUser.id,
+          email: result.verifiedByUser.email,
+          fullName: result.verifiedByUser.fullName,
+        }
         : null,
     };
   }

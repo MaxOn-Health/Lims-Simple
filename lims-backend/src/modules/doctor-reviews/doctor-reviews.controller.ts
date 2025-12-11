@@ -36,7 +36,7 @@ import { PatientResultsResponseDto } from './dto/review-response.dto';
 @ApiBearerAuth('JWT-auth')
 @UseGuards(RolesGuard)
 export class DoctorReviewsController {
-  constructor(private readonly doctorReviewsService: DoctorReviewsService) {}
+  constructor(private readonly doctorReviewsService: DoctorReviewsService) { }
 
   @Get('patients')
   @Roles(UserRole.DOCTOR)
@@ -71,7 +71,7 @@ export class DoctorReviewsController {
     @Query() queryDto: QueryPatientsDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<PaginatedPatientsResponseDto> {
-    return this.doctorReviewsService.findPatientsForReview(user.userId, queryDto);
+    return this.doctorReviewsService.findPatientsForReview(user.userId, queryDto, user.role as UserRole);
   }
 
   @Get('patient/:patientId/results')
@@ -88,7 +88,7 @@ export class DoctorReviewsController {
     @Param('patientId', ParseUUIDPipe) patientId: string,
     @CurrentUser() user: JwtPayload,
   ): Promise<PatientResultsResponseDto> {
-    return this.doctorReviewsService.getPatientResults(patientId, user.userId);
+    return this.doctorReviewsService.getPatientResults(patientId, user.userId, user.role as UserRole);
   }
 
   @Post('review')
@@ -105,7 +105,7 @@ export class DoctorReviewsController {
     @Body() createReviewDto: CreateReviewDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<ReviewResponseDto> {
-    return this.doctorReviewsService.createOrUpdateReview(createReviewDto, user.userId);
+    return this.doctorReviewsService.createOrUpdateReview(createReviewDto, user.userId, user.role as UserRole);
   }
 
   @Post('sign-report')
@@ -122,7 +122,7 @@ export class DoctorReviewsController {
     @Body() signReportDto: SignReportDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<ReviewResponseDto> {
-    return this.doctorReviewsService.signReport(signReportDto, user.userId);
+    return this.doctorReviewsService.signReport(signReportDto, user.userId, user.role as UserRole);
   }
 
   @Get('signed-reports')
@@ -171,6 +171,7 @@ export class DoctorReviewsController {
       limitNum,
       fromDate,
       toDate,
+      user!.role as UserRole,
     );
   }
 }

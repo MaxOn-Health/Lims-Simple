@@ -5,15 +5,23 @@ import {
   ReassignAssignmentRequest,
   UpdateAssignmentStatusRequest,
   QueryAssignmentsParams,
-  AutoAssignResponse,
   AssignmentStatus,
-} from '../../types/assignment.types';
+  AvailableTechnician,
+  AutoAssignPreviewItem,
+  AutoAssignRequest,
+} from '@/types/assignment.types';
 
 export const assignmentsService = {
-  async autoAssign(patientId: string): Promise<AutoAssignResponse> {
-    const response = await apiClient.post<AutoAssignResponse>(
-      `/assignments/auto-assign/${patientId}`
-    );
+  // Auto assign tests for a patient
+  autoAssign: async (patientId: string, overrides: Record<string, string> = {}): Promise<Assignment[]> => {
+    const data: AutoAssignRequest = { overrides };
+    const response = await apiClient.post<Assignment[]>(`/assignments/auto-assign/${patientId}`, data);
+    return response.data;
+  },
+
+  // Preview auto assignment
+  previewAutoAssign: async (patientId: string): Promise<AutoAssignPreviewItem[]> => {
+    const response = await apiClient.get<AutoAssignPreviewItem[]>(`/assignments/auto-assign/${patientId}/preview`);
     return response.data;
   },
 
@@ -35,10 +43,13 @@ export const assignmentsService = {
     return response.data;
   },
 
-  async getMyAssignments(status?: AssignmentStatus): Promise<Assignment[]> {
+  async getMyAssignments(status?: AssignmentStatus, projectId?: string): Promise<Assignment[]> {
     const params = new URLSearchParams();
     if (status) {
       params.append('status', status);
+    }
+    if (projectId) {
+      params.append('projectId', projectId);
     }
 
     const response = await apiClient.get<Assignment[]>(
@@ -77,13 +88,33 @@ export const assignmentsService = {
     if (query?.testId) {
       params.append('testId', query.testId);
     }
+    if (query?.projectId) {
+      params.append('projectId', query.projectId);
+    }
 
-    // Note: This endpoint may need to be added to backend
-    // For now, we'll try to use it and handle errors gracefully
     const response = await apiClient.get<Assignment[]>(
       `/assignments${params.toString() ? `?${params.toString()}` : ''}`
     );
     return response.data;
   },
+
+  /**
+   * Get available technicians for a specific test type, optionally filtered by project
+   * @param testId - The test ID to find technicians for
+   * @param projectId - Optional project ID to filter technicians by project membership
+   */
+  async getAvailableTechnicians(testId: string, projectId?: string): Promise<AvailableTechnician[]> {
+    const params = new URLSearchParams();
+    params.append('testId', testId);
+    if (projectId) {
+      params.append('projectId', projectId);
+    }
+
+    const response = await apiClient.get<AvailableTechnician[]>(
+      `/assignments/available-technicians?${params.toString()}`
+    );
+    return response.data;
+  },
 };
+
 

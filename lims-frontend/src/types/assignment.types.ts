@@ -10,6 +10,7 @@ export interface PatientInfo {
   id: string;
   patientId: string;
   name: string;
+  projectId?: string;
 }
 
 export interface TestInfo {
@@ -43,6 +44,15 @@ export interface Assignment {
   admin?: AdminInfo | null;
 }
 
+export interface AvailableTechnician {
+  id: string;
+  fullName: string;
+  email: string;
+  testTechnicianType: string | null;
+  currentAssignmentCount?: number;
+  isAvailable?: boolean;
+}
+
 export interface CreateAssignmentRequest {
   patientId: string;
   testId: string;
@@ -62,7 +72,22 @@ export interface QueryAssignmentsParams {
   patientId?: string;
   adminId?: string;
   testId?: string;
+  projectId?: string;
 }
 
 export type AutoAssignResponse = Assignment[];
 
+
+export interface AutoAssignPreviewItem {
+  testId: string;
+  testName: string;
+  adminId: string | null;
+  adminName: string | null;
+  adminEmail: string | null;
+  adminRole: string;
+  isAvailable: boolean;
+}
+
+export interface AutoAssignRequest {
+  overrides?: Record<string, string>;
+}

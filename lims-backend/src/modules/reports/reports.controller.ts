@@ -56,7 +56,7 @@ export class ReportsController {
     if (!userId) {
       throw new NotFoundException('User not authenticated');
     }
-    return this.reportsService.generateReport(patientId, userId);
+    return this.reportsService.generateReport(patientId, userId, req.user['role'] as UserRole);
   }
 
   @Get('patient/:patientId')
@@ -70,8 +70,10 @@ export class ReportsController {
   @ApiResponse({ status: 404, description: 'Report not found' })
   async getReportByPatient(
     @Param('patientId', UuidValidationPipe) patientId: string,
+    @Req() req: Request,
   ): Promise<ReportResponseDto | null> {
-    const report = await this.reportsService.findByPatient(patientId);
+    const user = req.user as any;
+    const report = await this.reportsService.findByPatientWithRole(patientId, user.userId, user.role);
     if (!report) {
       throw new NotFoundException(`Report for patient ${patientId} not found`);
     }
@@ -89,8 +91,10 @@ export class ReportsController {
   @ApiResponse({ status: 404, description: 'Report not found' })
   async getReportById(
     @Param('id', UuidValidationPipe) id: string,
+    @Req() req: Request,
   ): Promise<ReportResponseDto> {
-    return this.reportsService.findById(id);
+    const user = req.user as any;
+    return this.reportsService.findById(id, user.userId, user.role);
   }
 
   @Get(':id/download')
@@ -112,8 +116,10 @@ export class ReportsController {
   async downloadReport(
     @Param('id', UuidValidationPipe) id: string,
     @Res() res: Response,
+    @Req() req: Request,
   ): Promise<void> {
-    const report = await this.reportsService.findById(id);
+    const user = req.user as any;
+    const report = await this.reportsService.findById(id, user.userId, user.role);
 
     if (!report.pdfUrl) {
       throw new NotFoundException('PDF not available for this report');
@@ -163,6 +169,7 @@ export class ReportsController {
   })
   async getAllReports(
     @Query() queryDto: QueryReportsDto,
+    @Req() req: Request,
   ): Promise<{
     data: ReportResponseDto[];
     total: number;
@@ -170,7 +177,8 @@ export class ReportsController {
     limit: number;
     totalPages: number;
   }> {
-    return this.reportsService.findAll(queryDto);
+    const user = req.user as any;
+    return this.reportsService.findAll(queryDto, user.userId, user.role);
   }
 }
 

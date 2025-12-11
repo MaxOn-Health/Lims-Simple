@@ -16,10 +16,19 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/common/Skeleton';
 import { Search, FileText, CheckCircle2, Clock } from 'lucide-react';
 import { format, isToday } from 'date-fns';
+import { useProjectFilter } from '@/hooks/useProjectFilter';
+import { ProjectSelector } from '@/components/common/ProjectSelector/ProjectSelector';
 
 export const DoctorDashboard: React.FC = () => {
   const router = useRouter();
   const { addToast } = useUIStore();
+  const {
+    selectedProjectId,
+    setSelectedProjectId,
+    userProjects,
+    isSuperAdmin,
+    hasMultipleProjects,
+  } = useProjectFilter();
 
   const [patients, setPatients] = useState<PatientReview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +49,7 @@ export const DoctorDashboard: React.FC = () => {
         search,
         page: pageNum,
         limit: 12,
+        projectId: selectedProjectId || undefined,
       });
       setPatients(response.data);
       setTotalPages(response.totalPages);
@@ -59,7 +69,7 @@ export const DoctorDashboard: React.FC = () => {
   useEffect(() => {
     const status = selectedStatus === 'all' ? undefined : (selectedStatus as ReviewStatus);
     fetchPatients(status, searchQuery || undefined, page);
-  }, [selectedStatus, page]);
+  }, [selectedStatus, page, selectedProjectId]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +117,7 @@ export const DoctorDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <FileText className="h-8 w-8 text-primary" />
@@ -117,6 +127,20 @@ export const DoctorDashboard: React.FC = () => {
             Review patient test results and sign reports
           </p>
         </div>
+        {/* Project Filter */}
+        {(hasMultipleProjects || isSuperAdmin) && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Project:</span>
+            <ProjectSelector
+              selectedProjectId={selectedProjectId}
+              onSelect={setSelectedProjectId}
+              projects={userProjects}
+              showAllOption={isSuperAdmin}
+              className="w-64"
+              size="sm"
+            />
+          </div>
+        )}
       </div>
 
       {/* Statistics Cards */}

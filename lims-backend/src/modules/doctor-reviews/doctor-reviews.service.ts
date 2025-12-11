@@ -5,6 +5,7 @@ import {
   Inject,
   forwardRef,
   Logger,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Like } from 'typeorm';
@@ -22,7 +23,10 @@ import { ReviewResponseDto } from './dto/review-response.dto';
 import { PatientReviewResponseDto, PaginatedPatientsResponseDto } from './dto/patient-review-response.dto';
 import { PatientResultsResponseDto } from './dto/review-response.dto';
 import { PasskeyService } from '../auth/services/passkey.service';
+// Removed duplicate PasskeyService import
 import { AuditService } from '../audit/audit.service';
+import { ProjectAccessService } from '../../common/services/project-access.service';
+import { UserRole } from '../users/entities/user.entity';
 import { PatientResponseDto } from '../patients/dto/patient-response.dto';
 import { ResultResponseDto } from '../results/dto/result-response.dto';
 import { AssignmentResponseDto } from '../assignments/dto/assignment-response.dto';
@@ -46,6 +50,7 @@ export class DoctorReviewsService {
     private bloodSamplesRepository: Repository<BloodSample>,
     private passkeyService: PasskeyService,
     private auditService: AuditService,
+    private projectAccessService: ProjectAccessService,
     @Inject(forwardRef(() => ReportsService))
     private reportsService: ReportsService,
   ) { }
@@ -53,6 +58,7 @@ export class DoctorReviewsService {
   async findPatientsForReview(
     doctorId: string,
     queryDto: QueryPatientsDto,
+    userRole: UserRole, // Added userRole
   ): Promise<PaginatedPatientsResponseDto> {
     const { status, search, page = 1, limit = 10 } = queryDto;
     const skip = (page - 1) * limit;
@@ -69,6 +75,22 @@ export class DoctorReviewsService {
         '(patient.name ILIKE :search OR patient.patientId ILIKE :search OR patient.contactNumber ILIKE :search)',
         { search: `%${search}%` },
       );
+    }
+
+    if (userRole !== UserRole.SUPER_ADMIN) {
+      const allowedProjectIds = await this.projectAccessService.getUserProjectIds(doctorId, userRole);
+      if (allowedProjectIds.length > 0) {
+        query.andWhere('patient.projectId IN (:...allowedProjectIds)', { allowedProjectIds });
+      } else {
+        // User has no projects, return empty result
+        return {
+          data: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0
+        };
+      }
     }
 
     const [patients, total] = await query
@@ -156,6 +178,7 @@ export class DoctorReviewsService {
   async getPatientResults(
     patientId: string,
     doctorId: string,
+    userRole: UserRole,
   ): Promise<PatientResultsResponseDto> {
     // Get patient
     const patient = await this.patientsRepository.findOne({
@@ -165,6 +188,10 @@ export class DoctorReviewsService {
 
     if (!patient) {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
+    }
+
+    if (patient.projectId && !(await this.projectAccessService.canAccessProject(doctorId, patient.projectId, userRole))) {
+      throw new ForbiddenException('You do not have access to this project');
     }
 
     // Get all assignments for patient
@@ -216,11 +243,20 @@ export class DoctorReviewsService {
   async createOrUpdateReview(
     dto: CreateReviewDto,
     doctorId: string,
+    userRole: UserRole,
   ): Promise<ReviewResponseDto> {
     // Validate all assignments are SUBMITTED
     const assignments = await this.assignmentsRepository.find({
       where: { patientId: dto.patientId },
+      relations: ['patient'],
     });
+
+    if (assignments.length > 0) {
+      const patient = assignments[0].patient;
+      if (patient?.projectId && !(await this.projectAccessService.canAccessProject(doctorId, patient.projectId, userRole))) {
+        throw new ForbiddenException('You do not have access to this project');
+      }
+    }
 
     if (assignments.length === 0) {
       throw new BadRequestException('Patient has no assignments');
@@ -280,11 +316,20 @@ export class DoctorReviewsService {
   async signReport(
     dto: SignReportDto,
     doctorId: string,
+    userRole: UserRole,
   ): Promise<ReviewResponseDto> {
     // Validate all assignments are SUBMITTED
     const assignments = await this.assignmentsRepository.find({
       where: { patientId: dto.patientId },
+      relations: ['patient'],
     });
+
+    if (assignments.length > 0) {
+      const patient = assignments[0].patient;
+      if (patient?.projectId && !(await this.projectAccessService.canAccessProject(doctorId, patient.projectId, userRole))) {
+        throw new ForbiddenException('You do not have access to this project');
+      }
+    }
 
     if (assignments.length === 0) {
       throw new BadRequestException('Patient has no assignments');
@@ -356,7 +401,7 @@ export class DoctorReviewsService {
 
       // Auto-generate report (don't fail signing if report generation fails)
       try {
-        await this.reportsService.generateReport(dto.patientId, doctorId);
+        await this.reportsService.generateReport(dto.patientId, doctorId, userRole);
         this.logger.log(`Auto-generated report for patient ${dto.patientId} after signing`);
       } catch (error) {
         // Log error but don't fail signing
@@ -381,6 +426,7 @@ export class DoctorReviewsService {
     limit: number = 10,
     dateFrom?: Date,
     dateTo?: Date,
+    userRole?: UserRole,
   ): Promise<PaginatedPatientsResponseDto> {
     const skip = (page - 1) * limit;
 
@@ -398,6 +444,21 @@ export class DoctorReviewsService {
 
     if (dateTo) {
       query = query.andWhere('review.signedAt <= :dateTo', { dateTo });
+    }
+
+    if (userRole && userRole !== UserRole.SUPER_ADMIN) {
+      const allowedProjectIds = await this.projectAccessService.getUserProjectIds(doctorId, userRole);
+      if (allowedProjectIds.length > 0) {
+        query.andWhere('patient.projectId IN (:...allowedProjectIds)', { allowedProjectIds });
+      } else {
+        return {
+          data: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0
+        };
+      }
     }
 
     const [reviews, total] = await query

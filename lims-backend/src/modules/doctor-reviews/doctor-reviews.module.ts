@@ -15,6 +15,7 @@ import { BloodSamplesModule } from '../blood-samples/blood-samples.module';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { ReportsModule } from '../reports/reports.module';
+import { ProjectsModule } from '../projects/projects.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ReportsModule } from '../reports/reports.module';
     ResultsModule,
     BloodSamplesModule,
     AuditModule,
+    ProjectsModule, // Added ProjectsModule
     AuthModule,
     forwardRef(() => ReportsModule),
   ],

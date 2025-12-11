@@ -4,15 +4,20 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder, Between } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm'
+import { Repository, SelectQueryBuilder, In } from 'typeorm';
 import { Project } from './entities/project.entity';
+import { ProjectMember } from './entities/project-member.entity';
 import { Patient } from '../patients/entities/patient.entity';
+import { User } from '../users/entities/user.entity';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { QueryProjectsDto } from './dto/query-projects.dto';
 import { ProjectResponseDto } from './dto/project-response.dto';
+import { ProjectMemberResponseDto } from './dto/project-member-response.dto';
+import { AddProjectMemberDto } from './dto/add-project-member.dto';
 import { ProjectStatus } from './constants/project-status.enum';
+import { RoleInProject } from './constants/role-in-project.enum';
 import { PaginationMetaDto } from '../patients/dto/paginated-patients-response.dto';
 
 export interface PaginatedProjectsResponse {
@@ -25,8 +30,12 @@ export class ProjectsService {
   constructor(
     @InjectRepository(Project)
     private projectsRepository: Repository<Project>,
+    @InjectRepository(ProjectMember)
+    private projectMembersRepository: Repository<ProjectMember>,
     @InjectRepository(Patient)
     private patientsRepository: Repository<Patient>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
   ) { }
 
   async create(createProjectDto: CreateProjectDto): Promise<ProjectResponseDto> {
@@ -39,6 +48,15 @@ export class ProjectsService {
       throw new ConflictException('Project name already exists');
     }
 
+    // Validate date logic
+    if (createProjectDto.startDate && createProjectDto.endDate) {
+      const startDate = new Date(createProjectDto.startDate);
+      const endDate = new Date(createProjectDto.endDate);
+      if (endDate < startDate) {
+        throw new BadRequestException('End date must be on or after start date');
+      }
+    }
+
     const project = this.projectsRepository.create({
       name: createProjectDto.name,
       description: createProjectDto.description,
@@ -46,7 +64,8 @@ export class ProjectsService {
       contactPerson: createProjectDto.contactPerson || null,
       contactNumber: createProjectDto.contactNumber || null,
       contactEmail: createProjectDto.contactEmail || null,
-      campDate: createProjectDto.campDate ? new Date(createProjectDto.campDate) : null,
+      startDate: createProjectDto.startDate ? new Date(createProjectDto.startDate) : null,
+      endDate: createProjectDto.endDate ? new Date(createProjectDto.endDate) : null,
       campLocation: createProjectDto.campLocation || null,
       campSettings: createProjectDto.campSettings || null,
       status: ProjectStatus.ACTIVE,
@@ -56,11 +75,17 @@ export class ProjectsService {
     });
 
     const savedProject = await this.projectsRepository.save(project);
+
+    // Add members if provided
+    if (createProjectDto.memberIds && createProjectDto.memberIds.length > 0) {
+      await this.addMultipleMembers(savedProject.id, createProjectDto.memberIds);
+    }
+
     return this.mapToResponseDto(savedProject);
   }
 
   async findAll(query: QueryProjectsDto): Promise<PaginatedProjectsResponse> {
-    const { page = 1, limit = 10, search, status, companyName, campDateFrom, campDateTo } = query;
+    const { page = 1, limit = 10, search, status, companyName, startDateFrom, startDateTo } = query;
     const skip = (page - 1) * limit;
 
     let queryBuilder: SelectQueryBuilder<Project> = this.projectsRepository
@@ -97,34 +122,34 @@ export class ProjectsService {
       }
     }
 
-    // Camp date filter
-    if (campDateFrom && campDateTo) {
-      const fromDate = new Date(campDateFrom);
-      const toDate = new Date(campDateTo);
+    // Start date filter (renamed from campDateFrom/To)
+    if (startDateFrom && startDateTo) {
+      const fromDate = new Date(startDateFrom);
+      const toDate = new Date(startDateTo);
       toDate.setHours(23, 59, 59, 999);
 
       if (search || status || companyName) {
-        queryBuilder = queryBuilder.andWhere('project.campDate BETWEEN :campDateFrom AND :campDateTo', {
-          campDateFrom: fromDate,
-          campDateTo: toDate,
+        queryBuilder = queryBuilder.andWhere('project.startDate BETWEEN :startDateFrom AND :startDateTo', {
+          startDateFrom: fromDate,
+          startDateTo: toDate,
         });
       } else {
-        queryBuilder = queryBuilder.where('project.campDate BETWEEN :campDateFrom AND :campDateTo', {
-          campDateFrom: fromDate,
-          campDateTo: toDate,
+        queryBuilder = queryBuilder.where('project.startDate BETWEEN :startDateFrom AND :startDateTo', {
+          startDateFrom: fromDate,
+          startDateTo: toDate,
         });
       }
-    } else if (campDateFrom) {
+    } else if (startDateFrom) {
       if (search || status || companyName) {
-        queryBuilder = queryBuilder.andWhere('project.campDate >= :campDateFrom', { campDateFrom });
+        queryBuilder = queryBuilder.andWhere('project.startDate >= :startDateFrom', { startDateFrom });
       } else {
-        queryBuilder = queryBuilder.where('project.campDate >= :campDateFrom', { campDateFrom });
+        queryBuilder = queryBuilder.where('project.startDate >= :startDateFrom', { startDateFrom });
       }
-    } else if (campDateTo) {
+    } else if (startDateTo) {
       if (search || status || companyName) {
-        queryBuilder = queryBuilder.andWhere('project.campDate <= :campDateTo', { campDateTo });
+        queryBuilder = queryBuilder.andWhere('project.startDate <= :startDateTo', { startDateTo });
       } else {
-        queryBuilder = queryBuilder.where('project.campDate <= :campDateTo', { campDateTo });
+        queryBuilder = queryBuilder.where('project.startDate <= :startDateTo', { startDateTo });
       }
     }
 
@@ -150,7 +175,7 @@ export class ProjectsService {
   async findById(id: string): Promise<ProjectResponseDto> {
     const project = await this.projectsRepository.findOne({
       where: { id },
-      relations: ['patients'],
+      relations: ['patients', 'members', 'members.user'],
     });
 
     if (!project) {
@@ -177,6 +202,13 @@ export class ProjectsService {
       }
     }
 
+    // Validate date logic
+    const newStartDate = updateProjectDto.startDate ? new Date(updateProjectDto.startDate) : project.startDate;
+    const newEndDate = updateProjectDto.endDate ? new Date(updateProjectDto.endDate) : project.endDate;
+    if (newStartDate && newEndDate && newEndDate < newStartDate) {
+      throw new BadRequestException('End date must be on or after start date');
+    }
+
     // Update fields
     if (updateProjectDto.name !== undefined) {
       project.name = updateProjectDto.name;
@@ -196,8 +228,11 @@ export class ProjectsService {
     if (updateProjectDto.contactEmail !== undefined) {
       project.contactEmail = updateProjectDto.contactEmail || null;
     }
-    if (updateProjectDto.campDate !== undefined) {
-      project.campDate = updateProjectDto.campDate ? new Date(updateProjectDto.campDate) : null;
+    if (updateProjectDto.startDate !== undefined) {
+      project.startDate = updateProjectDto.startDate ? new Date(updateProjectDto.startDate) : null;
+    }
+    if (updateProjectDto.endDate !== undefined) {
+      project.endDate = updateProjectDto.endDate ? new Date(updateProjectDto.endDate) : null;
     }
     if (updateProjectDto.campLocation !== undefined) {
       project.campLocation = updateProjectDto.campLocation || null;
@@ -210,6 +245,16 @@ export class ProjectsService {
     }
 
     const updatedProject = await this.projectsRepository.save(project);
+
+    // Handle member updates if provided
+    if (updateProjectDto.memberIds !== undefined) {
+      // Remove all existing members and add new ones
+      await this.projectMembersRepository.delete({ projectId: id });
+      if (updateProjectDto.memberIds.length > 0) {
+        await this.addMultipleMembers(id, updateProjectDto.memberIds);
+      }
+    }
+
     return this.mapToResponseDto(updatedProject);
   }
 
@@ -252,6 +297,118 @@ export class ProjectsService {
     });
 
     return projects.map((project) => this.mapToResponseDto(project));
+  }
+
+  // ─────────────────────────────────────────────
+  // Member Management Methods
+  // ─────────────────────────────────────────────
+
+  async addMember(projectId: string, dto: AddProjectMemberDto): Promise<ProjectMemberResponseDto> {
+    const project = await this.projectsRepository.findOne({ where: { id: projectId } });
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const user = await this.usersRepository.findOne({ where: { id: dto.userId, isActive: true } });
+    if (!user) {
+      throw new NotFoundException('User not found or inactive');
+    }
+
+    // Check if member already exists
+    const existingMember = await this.projectMembersRepository.findOne({
+      where: { projectId, userId: dto.userId },
+    });
+    if (existingMember) {
+      throw new ConflictException('User is already a member of this project');
+    }
+
+    const member = this.projectMembersRepository.create({
+      projectId,
+      userId: dto.userId,
+      roleInProject: dto.roleInProject || RoleInProject.MEMBER,
+    });
+
+    const savedMember = await this.projectMembersRepository.save(member);
+
+    // Reload with user relation
+    const memberWithUser = await this.projectMembersRepository.findOne({
+      where: { id: savedMember.id },
+      relations: ['user'],
+    });
+
+    return this.mapMemberToResponseDto(memberWithUser!);
+  }
+
+  async removeMember(projectId: string, userId: string): Promise<{ message: string }> {
+    const member = await this.projectMembersRepository.findOne({
+      where: { projectId, userId },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member not found in this project');
+    }
+
+    await this.projectMembersRepository.remove(member);
+    return { message: 'Member removed successfully' };
+  }
+
+  async getProjectMembers(projectId: string): Promise<ProjectMemberResponseDto[]> {
+    const project = await this.projectsRepository.findOne({ where: { id: projectId } });
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const members = await this.projectMembersRepository.find({
+      where: { projectId },
+      relations: ['user'],
+      order: { createdAt: 'ASC' },
+    });
+
+    return members.map((member) => this.mapMemberToResponseDto(member));
+  }
+
+  async getProjectsForUser(userId: string): Promise<ProjectResponseDto[]> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const memberships = await this.projectMembersRepository.find({
+      where: { userId },
+      relations: ['project'],
+    });
+
+    return memberships
+      .filter((m) => m.project && m.project.status === ProjectStatus.ACTIVE)
+      .map((m) => this.mapToResponseDto(m.project));
+  }
+
+  // ─────────────────────────────────────────────
+  // Helper Methods
+  // ─────────────────────────────────────────────
+
+  private async addMultipleMembers(projectId: string, userIds: string[]): Promise<void> {
+    // Validate all users exist and are active
+    const users = await this.usersRepository.find({
+      where: { id: In(userIds), isActive: true },
+    });
+
+    if (users.length !== userIds.length) {
+      const foundIds = users.map((u) => u.id);
+      const missingIds = userIds.filter((id) => !foundIds.includes(id));
+      throw new BadRequestException(`Users not found or inactive: ${missingIds.join(', ')}`);
+    }
+
+    // Create member records
+    const members = userIds.map((userId) =>
+      this.projectMembersRepository.create({
+        projectId,
+        userId,
+        roleInProject: RoleInProject.MEMBER,
+      }),
+    );
+
+    await this.projectMembersRepository.save(members);
   }
 
   /**
@@ -299,7 +456,8 @@ export class ProjectsService {
       contactPerson: project.contactPerson,
       contactNumber: project.contactNumber,
       contactEmail: project.contactEmail,
-      campDate: project.campDate,
+      startDate: project.startDate,
+      endDate: project.endDate,
       campLocation: project.campLocation,
       campSettings: project.campSettings,
       patientCount: project.patientCount,
@@ -310,5 +468,17 @@ export class ProjectsService {
       updatedAt: project.updatedAt,
     };
   }
-}
 
+  private mapMemberToResponseDto(member: ProjectMember): ProjectMemberResponseDto {
+    return {
+      id: member.id,
+      userId: member.userId,
+      userFullName: member.user?.fullName || '',
+      userEmail: member.user?.email || '',
+      userRole: member.user?.role || '',
+      testTechnicianType: member.user?.testTechnicianType || null,
+      roleInProject: member.roleInProject,
+      createdAt: member.createdAt,
+    };
+  }
+}

@@ -17,6 +17,8 @@ import { AssignmentStatus } from '../assignments/constants/assignment-status.enu
 import { TestResult } from '../results/entities/test-result.entity';
 import { DoctorReview } from '../doctor-reviews/entities/doctor-review.entity';
 import { AuditService } from '../audit/audit.service';
+import { ProjectAccessService } from '../../common/services/project-access.service';
+import { UserRole } from '../users/entities/user.entity';
 import { ReportResponseDto } from './dto/report-response.dto';
 import { QueryReportsDto } from './dto/query-reports.dto';
 
@@ -39,11 +41,13 @@ export class ReportsService {
     private pdfGenerationService: PdfGenerationService,
     private fileStorageService: FileStorageService,
     private auditService: AuditService,
+    private projectAccessService: ProjectAccessService,
   ) { }
 
   async generateReport(
     patientId: string,
     generatedBy: string,
+    userRole: UserRole, // Added role
   ): Promise<ReportResponseDto> {
     // Validate all tests are SUBMITTED
     const assignments = await this.assignmentsRepository.find({
@@ -278,7 +282,21 @@ export class ReportsService {
     return 'Normal';
   }
 
-  async findByPatient(patientId: string): Promise<ReportResponseDto | null> {
+  async findByPatient(patientId: string, userId: string): Promise<ReportResponseDto | null> {
+    const userRole = (await this.assignmentsRepository.manager.getRepository('User').findOne({ where: { id: userId } }))?.role as UserRole; // Helper to get role if not passed, but better to pass it.
+    // Actually we should pass userRole from controller. Let's assume we will update signature to take role.
+
+    // For now, let's stick to the plan of passing it.
+    return this.findByPatientWithRole(patientId, userId, userRole);
+  }
+
+  async findByPatientWithRole(patientId: string, userId: string, userRole: UserRole): Promise<ReportResponseDto | null> {
+    // Check access first
+    const patient = await this.patientsRepository.findOne({ where: { id: patientId } });
+    if (patient?.projectId && !(await this.projectAccessService.canAccessProject(userId, patient.projectId, userRole))) {
+      throw new NotFoundException('Report not found'); // Hide existence
+    }
+
     const report = await this.reportsRepository.findOne({
       where: { patientId },
       relations: ['patient', 'doctorReview', 'generatedByUser'],
@@ -292,11 +310,15 @@ export class ReportsService {
     return this.mapToDto(report);
   }
 
-  async findById(id: string): Promise<ReportResponseDto> {
+  async findById(id: string, userId: string, userRole: UserRole): Promise<ReportResponseDto> {
     const report = await this.reportsRepository.findOne({
       where: { id },
       relations: ['patient', 'doctorReview', 'generatedByUser'],
     });
+
+    if (report && report.patient?.projectId && !(await this.projectAccessService.canAccessProject(userId, report.patient.projectId, userRole))) {
+      throw new NotFoundException(`Report with ID ${id} not found`);
+    }
 
     if (!report) {
       throw new NotFoundException(`Report with ID ${id} not found`);
@@ -305,7 +327,7 @@ export class ReportsService {
     return this.mapToDto(report);
   }
 
-  async findAll(queryDto: QueryReportsDto): Promise<{
+  async findAll(queryDto: QueryReportsDto, userId: string, userRole: UserRole): Promise<{
     data: ReportResponseDto[];
     total: number;
     page: number;
@@ -320,6 +342,15 @@ export class ReportsService {
       .leftJoinAndSelect('report.patient', 'patient')
       .leftJoinAndSelect('report.doctorReview', 'doctorReview')
       .leftJoinAndSelect('report.generatedByUser', 'generatedByUser');
+
+    if (userRole !== UserRole.SUPER_ADMIN) {
+      const allowedProjectIds = await this.projectAccessService.getUserProjectIds(userId, userRole);
+      if (allowedProjectIds.length === 0) {
+        return { data: [], total: 0, page, limit, totalPages: 0 };
+      }
+      // Filter by patient project
+      queryBuilder.andWhere('patient.projectId IN (:...allowedProjectIds)', { allowedProjectIds });
+    }
 
     if (status) {
       queryBuilder.andWhere('report.status = :status', { status });

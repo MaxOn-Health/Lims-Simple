@@ -10,6 +10,7 @@ import {
   MaxLength,
   Matches,
   ValidateIf,
+  IsNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -116,7 +117,8 @@ export class CreatePatientDto {
     example: ['123e4567-e89b-12d3-a456-426614174001', '123e4567-e89b-12d3-a456-426614174002'],
     type: [String],
   })
-  @IsOptional()
+  @ValidateIf((o) => !o.packageId) // Required if packageId is missing
+  @IsNotEmpty({ message: 'Select at least one test or a package' })
   @IsArray()
   @IsUUID('4', { each: true, message: 'Each test ID must be a valid UUID' })
   @IsValidAddonTests()

@@ -25,6 +25,7 @@ import { SampleIdService } from './services/sample-id.service';
 import { PasscodeService } from './services/passcode.service';
 import { ResultValidationService } from '../results/services/result-validation.service';
 import { AuditService } from '../audit/audit.service';
+import { ProjectAccessService } from '../../common/services/project-access.service';
 
 @Injectable()
 export class BloodSamplesService {
@@ -47,11 +48,13 @@ export class BloodSamplesService {
     private passcodeService: PasscodeService,
     private resultValidationService: ResultValidationService,
     private auditService: AuditService,
-  ) {}
+    private projectAccessService: ProjectAccessService,
+  ) { }
 
   async registerBloodSample(
     dto: RegisterBloodSampleDto,
     collectedByUserId: string,
+    userRole: UserRole,
   ): Promise<RegisterBloodSampleResponseDto> {
     // Validate patient exists
     const patient = await this.patientsRepository.findOne({
@@ -60,6 +63,10 @@ export class BloodSamplesService {
 
     if (!patient) {
       throw new NotFoundException(`Patient with ID ${dto.patientId} not found`);
+    }
+
+    if (patient.projectId && !(await this.projectAccessService.canAccessProject(collectedByUserId, patient.projectId, userRole))) {
+      throw new ForbiddenException('You do not have access to this project');
     }
 
     // Generate sample ID
@@ -137,6 +144,7 @@ export class BloodSamplesService {
   async accessBloodSample(
     dto: AccessBloodSampleDto,
     accessedByUserId: string,
+    userRole: UserRole, // Added role
   ): Promise<BloodSampleResponseDto> {
     // Find sample by sampleId
     const sample = await this.bloodSamplesRepository.findOne({
@@ -146,6 +154,10 @@ export class BloodSamplesService {
 
     if (!sample) {
       throw new NotFoundException(`Blood sample with ID ${dto.sampleId} not found`);
+    }
+
+    if (sample.patient?.projectId && !(await this.projectAccessService.canAccessProject(accessedByUserId, sample.patient.projectId, userRole))) {
+      throw new ForbiddenException('You do not have access to this project');
     }
 
     // Verify passcode
@@ -224,6 +236,7 @@ export class BloodSamplesService {
     id: string,
     dto: UpdateBloodSampleStatusDto,
     userId: string,
+    userRole: UserRole,
   ): Promise<BloodSampleResponseDto> {
     const sample = await this.bloodSamplesRepository.findOne({
       where: { id },
@@ -270,6 +283,9 @@ export class BloodSamplesService {
   }
 
   async findById(id: string, userId: string): Promise<BloodSampleResponseDto> {
+    const userRole = (await this.usersRepository.findOne({ where: { id: userId } }))?.role;
+    if (!userRole) throw new ForbiddenException('User not found');
+
     const sample = await this.bloodSamplesRepository.findOne({
       where: { id },
       relations: ['patient', 'collectedByUser', 'testedByUser'],
@@ -333,6 +349,7 @@ export class BloodSamplesService {
     id: string,
     dto: SubmitBloodTestResultDto,
     userId: string,
+    userRole: UserRole, // Added role
   ): Promise<any> {
     const sample = await this.bloodSamplesRepository.findOne({
       where: { id },
@@ -477,10 +494,10 @@ export class BloodSamplesService {
       },
       testedByUser: sample.testedByUser
         ? {
-            id: sample.testedByUser.id,
-            email: sample.testedByUser.email,
-            fullName: sample.testedByUser.fullName,
-          }
+          id: sample.testedByUser.id,
+          email: sample.testedByUser.email,
+          fullName: sample.testedByUser.fullName,
+        }
         : null,
     };
   }

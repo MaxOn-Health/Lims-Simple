@@ -24,7 +24,7 @@ export class DashboardService {
         private reportsRepository: Repository<Report>,
     ) { }
 
-    async getStats(userId: string, userRole: UserRole): Promise<DashboardResponseDto> {
+    async getStats(userId: string, userRole: UserRole, projectId?: string): Promise<DashboardResponseDto> {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -41,25 +41,60 @@ export class DashboardService {
             reportsAwaitingReview,
             paymentsPending,
         ] = await Promise.all([
+            // Patients Today
             this.patientsRepository.count({
-                where: { createdAt: MoreThanOrEqual(today) },
+                where: {
+                    createdAt: MoreThanOrEqual(today),
+                    ...(projectId ? { projectId } : {}),
+                },
             }),
+            // Patients This Week
             this.patientsRepository.count({
-                where: { createdAt: MoreThanOrEqual(weekAgo) },
+                where: {
+                    createdAt: MoreThanOrEqual(weekAgo),
+                    ...(projectId ? { projectId } : {}),
+                },
             }),
-            this.assignmentsRepository.count({
-                where: { status: AssignmentStatus.PENDING },
-            }),
-            this.resultsRepository.count({
-                where: { createdAt: MoreThanOrEqual(today) },
-            }),
-            this.reportsRepository.count({
-                where: { status: ReportStatus.PENDING },
-            }),
+            // Pending Tests (Assignments)
+            projectId
+                ? this.assignmentsRepository
+                    .createQueryBuilder('assignment')
+                    .innerJoin('assignment.patient', 'patient')
+                    .where('assignment.status = :status', { status: AssignmentStatus.PENDING })
+                    .andWhere('patient.projectId = :projectId', { projectId })
+                    .getCount()
+                : this.assignmentsRepository.count({
+                    where: { status: AssignmentStatus.PENDING },
+                }),
+            // Completed Results
+            projectId
+                ? this.resultsRepository
+                    .createQueryBuilder('result')
+                    .innerJoin('result.assignment', 'assignment')
+                    .innerJoin('assignment.patient', 'patient')
+                    .where('result.createdAt >= :today', { today })
+                    .andWhere('patient.projectId = :projectId', { projectId })
+                    .getCount()
+                : this.resultsRepository.count({
+                    where: { createdAt: MoreThanOrEqual(today) },
+                }),
+            // Reports Awaiting Review
+            projectId
+                ? this.reportsRepository
+                    .createQueryBuilder('report')
+                    .innerJoin('report.patient', 'patient')
+                    .where('report.status = :status', { status: ReportStatus.PENDING })
+                    .andWhere('patient.projectId = :projectId', { projectId })
+                    .getCount()
+                : this.reportsRepository.count({
+                    where: { status: ReportStatus.PENDING },
+                }),
+            // Payments Pending
             this.patientsRepository
                 .createQueryBuilder('patient')
                 .innerJoin('patient.patientPackages', 'pp')
                 .where('pp.paymentStatus = :status', { status: PaymentStatus.PENDING })
+                .andWhere(projectId ? 'patient.projectId = :projectId' : '1=1', { projectId })
                 .getCount(),
         ]);
 
@@ -73,7 +108,7 @@ export class DashboardService {
         };
 
         // Role-specific stats
-        const roleStats = await this.getRoleSpecificStats(userId, userRole, today);
+        const roleStats = await this.getRoleSpecificStats(userId, userRole, today, projectId);
 
         // Quick actions based on role
         const quickActions = this.getQuickActions(userRole);
@@ -85,18 +120,23 @@ export class DashboardService {
         userId: string,
         userRole: UserRole,
         today: Date,
+        projectId?: string,
     ): Promise<RoleSpecificStatsDto> {
         const roleStats: RoleSpecificStatsDto = {};
 
         if (userRole === UserRole.RECEPTIONIST || userRole === UserRole.SUPER_ADMIN) {
             const [registrationsToday, pendingPayments] = await Promise.all([
                 this.patientsRepository.count({
-                    where: { createdAt: MoreThanOrEqual(today) },
+                    where: {
+                        createdAt: MoreThanOrEqual(today),
+                        ...(projectId ? { projectId } : {}),
+                    },
                 }),
                 this.patientsRepository
                     .createQueryBuilder('patient')
                     .innerJoin('patient.patientPackages', 'pp')
                     .where('pp.paymentStatus = :status', { status: PaymentStatus.PENDING })
+                    .andWhere(projectId ? 'patient.projectId = :projectId' : '1=1', { projectId })
                     .getCount(),
             ]);
             roleStats.registrationsToday = registrationsToday;
@@ -105,18 +145,35 @@ export class DashboardService {
 
         if (userRole === UserRole.TEST_TECHNICIAN || userRole === UserRole.LAB_TECHNICIAN) {
             const [myPendingTasks, myCompletedToday] = await Promise.all([
-                this.assignmentsRepository.count({
-                    where: {
-                        adminId: userId,
-                        status: AssignmentStatus.PENDING,
-                    },
-                }),
-                this.resultsRepository.count({
-                    where: {
-                        enteredBy: userId,
-                        createdAt: MoreThanOrEqual(today),
-                    },
-                }),
+                projectId
+                    ? this.assignmentsRepository
+                        .createQueryBuilder('assignment')
+                        .innerJoin('assignment.patient', 'patient')
+                        .where('assignment.adminId = :userId', { userId })
+                        .andWhere('assignment.status = :status', { status: AssignmentStatus.PENDING })
+                        .andWhere('patient.projectId = :projectId', { projectId })
+                        .getCount()
+                    : this.assignmentsRepository.count({
+                        where: {
+                            adminId: userId,
+                            status: AssignmentStatus.PENDING,
+                        },
+                    }),
+                projectId
+                    ? this.resultsRepository
+                        .createQueryBuilder('result')
+                        .innerJoin('result.assignment', 'assignment')
+                        .innerJoin('assignment.patient', 'patient')
+                        .where('result.enteredBy = :userId', { userId })
+                        .andWhere('result.createdAt >= :today', { today })
+                        .andWhere('patient.projectId = :projectId', { projectId })
+                        .getCount()
+                    : this.resultsRepository.count({
+                        where: {
+                            enteredBy: userId,
+                            createdAt: MoreThanOrEqual(today),
+                        },
+                    }),
             ]);
             roleStats.myPendingTasks = myPendingTasks;
             roleStats.myCompletedToday = myCompletedToday;
@@ -124,15 +181,30 @@ export class DashboardService {
 
         if (userRole === UserRole.DOCTOR) {
             const [reportsToReview, reportsSigned] = await Promise.all([
-                this.reportsRepository.count({
-                    where: { status: ReportStatus.PENDING },
-                }),
-                this.reportsRepository.count({
-                    where: {
-                        status: ReportStatus.COMPLETED,
-                        updatedAt: MoreThanOrEqual(today),
-                    },
-                }),
+                projectId
+                    ? this.reportsRepository
+                        .createQueryBuilder('report')
+                        .innerJoin('report.patient', 'patient')
+                        .where('report.status = :status', { status: ReportStatus.PENDING })
+                        .andWhere('patient.projectId = :projectId', { projectId })
+                        .getCount()
+                    : this.reportsRepository.count({
+                        where: { status: ReportStatus.PENDING },
+                    }),
+                projectId
+                    ? this.reportsRepository
+                        .createQueryBuilder('report')
+                        .innerJoin('report.patient', 'patient')
+                        .where('report.status = :status', { status: ReportStatus.COMPLETED })
+                        .andWhere('report.updatedAt >= :today', { today })
+                        .andWhere('patient.projectId = :projectId', { projectId })
+                        .getCount()
+                    : this.reportsRepository.count({
+                        where: {
+                            status: ReportStatus.COMPLETED,
+                            updatedAt: MoreThanOrEqual(today),
+                        },
+                    }),
             ]);
             roleStats.reportsToReview = reportsToReview;
             roleStats.reportsSigned = reportsSigned;

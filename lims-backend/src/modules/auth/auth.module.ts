@@ -10,11 +10,12 @@ import { User } from '../users/entities/user.entity';
 import { PasswordService } from '../../common/services/password.service';
 import { JwtTokenService } from '../../common/services/jwt.service';
 import { TokenBlacklistService } from '../../common/services/token-blacklist.service';
+import { PasswordResetToken } from './entities/password-reset-token.entity';
 
 @Module({
   imports: [
     UsersModule,
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, PasswordResetToken]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
@@ -33,5 +34,5 @@ import { TokenBlacklistService } from '../../common/services/token-blacklist.ser
   providers: [AuthService, PasskeyService, PasswordService, JwtTokenService, TokenBlacklistService],
   exports: [AuthService, PasskeyService, JwtTokenService],
 })
-export class AuthModule {}
+export class AuthModule { }
 

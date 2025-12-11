@@ -1,4 +1,9 @@
-<!-- 8fbb9d91-65ba-484f-aa84-16074c883d4d efc34364-1034-4245-a060-cc5e7ff8b2ba -->
+---
+name: Project/Company Management Feature Implementation
+overview: ""
+todos: []
+---
+
 # Project/Company Management Feature Implementation
 
 ## Overview

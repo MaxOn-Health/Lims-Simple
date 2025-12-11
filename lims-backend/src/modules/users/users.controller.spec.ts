@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { AuditService } from '../audit/audit.service';
 import { PasswordService } from '../../common/services/password.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -61,6 +62,12 @@ describe('UsersController', () => {
           useValue: {
             hashPassword: jest.fn(),
             comparePassword: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            log: jest.fn(),
           },
         },
       ],
@@ -138,7 +145,7 @@ describe('UsersController', () => {
 
       jest.spyOn(usersService, 'findAllPaginated').mockResolvedValue(paginatedResult);
 
-      const result = await controller.findAll(query);
+      const result = await controller.findAll(query, mockSuperAdmin);
 
       expect(result.data).toHaveLength(1);
       expect(result.data[0]).not.toHaveProperty('passwordHash');

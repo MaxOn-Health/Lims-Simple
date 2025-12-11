@@ -5,6 +5,9 @@ module.exports = {
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
   },
+  transformIgnorePatterns: [
+    '/node_modules/(?!(uuid)/)',
+  ],
   collectCoverageFrom: [
     '**/*.(t|j)s',
     '!**/*.spec.ts',
@@ -17,6 +20,7 @@ module.exports = {
   testEnvironment: 'node',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^uuid$': '<rootDir>/../node_modules/uuid/dist/index.js',
   },
 };
 

@@ -111,8 +111,11 @@ export class UsersController {
     type: PaginatedUsersResponseDto,
   })
   @ApiResponse({ status: 403, description: 'Forbidden - SUPER_ADMIN only' })
-  async findAll(@Query() query: QueryUsersDto): Promise<PaginatedUsersResponseDto> {
-    const result = await this.usersService.findAllPaginated(query);
+  async findAll(
+    @Query() query: QueryUsersDto,
+    @CurrentUser() currentUser: JwtPayload,
+  ): Promise<PaginatedUsersResponseDto> {
+    const result = await this.usersService.findAllPaginated(query, currentUser.userId, currentUser.role as UserRole);
 
     // Remove passwordHash from all users
     const usersWithoutPassword = result.data.map((user: User) => {

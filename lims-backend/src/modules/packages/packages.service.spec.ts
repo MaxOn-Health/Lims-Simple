@@ -6,6 +6,7 @@ import { PackagesService } from './packages.service';
 import { Package } from './entities/package.entity';
 import { PackageTest } from './entities/package-test.entity';
 import { Test as TestEntity } from '../tests/entities/test.entity';
+import { PatientPackage } from '../patients/entities/patient-package.entity';
 import { CreatePackageDto } from './dto/create-package.dto';
 import { UpdatePackageDto } from './dto/update-package.dto';
 import { AddTestToPackageDto } from './dto/add-test-to-package.dto';
@@ -68,6 +69,12 @@ describe('PackagesService', () => {
         {
           provide: getRepositoryToken(TestEntity),
           useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(PatientPackage),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+          },
         },
       ],
     }).compile();
@@ -223,7 +230,7 @@ describe('PackagesService', () => {
     it('should add test to package', async () => {
       const packageId = '123';
       const packageWithId = { ...mockPackage, id: packageId };
-      
+
       mockRepository.findOne
         .mockResolvedValueOnce(packageWithId) // First call for package
         .mockResolvedValueOnce(mockTest) // Second call for test

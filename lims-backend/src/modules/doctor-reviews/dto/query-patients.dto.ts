@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsEnum, IsString, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsEnum, IsString, IsInt, Min, Max, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export enum ReviewStatus {
@@ -37,4 +37,12 @@ export class QueryPatientsDto {
   @Min(1)
   @Max(100)
   limit?: number = 10;
+
+  @ApiPropertyOptional({
+    description: 'Filter by specific project (automatically scoped to doctor access)',
+    example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
+  })
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
 }

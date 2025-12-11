@@ -12,6 +12,7 @@ import { PackageTest } from '../packages/entities/package-test.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { AdminSelectionService } from './services/admin-selection.service';
 import { AuditService } from '../audit/audit.service';
+import { ProjectAccessService } from '../../common/services/project-access.service';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
 import { ReassignAssignmentDto } from './dto/reassign-assignment.dto';
 import { UpdateAssignmentStatusDto } from './dto/update-assignment-status.dto';
@@ -142,7 +143,10 @@ describe('AssignmentsService', () => {
             createQueryBuilder: jest.fn(() => ({
               where: jest.fn().mockReturnThis(),
               andWhere: jest.fn().mockReturnThis(),
-              getCount: jest.fn(),
+              leftJoinAndSelect: jest.fn().mockReturnThis(),
+              orderBy: jest.fn().mockReturnThis(),
+              getMany: jest.fn().mockResolvedValue([mockAssignment]),
+              getCount: jest.fn().mockResolvedValue(1),
             })),
           },
         },
@@ -193,6 +197,13 @@ describe('AssignmentsService', () => {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: ProjectAccessService,
+          useValue: {
+            canAccessProject: jest.fn().mockResolvedValue(true),
+            getUserProjectIds: jest.fn().mockResolvedValue(['project-1']),
           },
         },
       ],

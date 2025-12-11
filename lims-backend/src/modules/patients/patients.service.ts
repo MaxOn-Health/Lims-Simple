@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In } from 'typeorm';
 import { Patient } from './entities/patient.entity';
@@ -27,6 +27,8 @@ import { BloodSampleStatus } from '../blood-samples/constants/blood-sample-statu
 import { ProjectsService } from '../projects/projects.service';
 import { ProjectStatus } from '../projects/constants/project-status.enum';
 import { AssignmentsService } from '../assignments/assignments.service';
+import { ProjectAccessService } from '../../common/services/project-access.service';
+import { User, UserRole } from '../users/entities/user.entity';
 import { Logger } from '@nestjs/common';
 
 @Injectable()
@@ -55,15 +57,20 @@ export class PatientsService {
     private auditService: AuditService,
     private projectsService: ProjectsService,
     private assignmentsService: AssignmentsService,
-  ) {}
+    private projectAccessService: ProjectAccessService,
+  ) { }
 
   async register(createPatientDto: CreatePatientDto, registeredByUserId: string, userRole?: string): Promise<PatientResponseDto> {
     // Validate project if projectId is provided
     let project = null;
     if (createPatientDto.projectId) {
+      if (userRole !== UserRole.SUPER_ADMIN && !(await this.projectAccessService.canAccessProject(registeredByUserId, createPatientDto.projectId, userRole))) {
+        throw new ForbiddenException('You do not have access to this project');
+      }
+
       try {
         project = await this.projectsService.findById(createPatientDto.projectId);
-        
+
         // Receptionists can only use active projects
         if (userRole === 'RECEPTIONIST' && project.status !== ProjectStatus.ACTIVE) {
           throw new BadRequestException('Only active projects can be used for patient registration');
@@ -205,11 +212,43 @@ export class PatientsService {
     return this.mapToResponseDto(savedPatient);
   }
 
-  async findAll(query: QueryPatientsDto): Promise<PaginatedPatientsResponseDto> {
+  async findAll(query: QueryPatientsDto, currentUser?: User): Promise<PaginatedPatientsResponseDto> {
     const { page = 1, limit = 10, search, dateFrom, dateTo } = query;
     const skip = (page - 1) * limit;
 
     let queryBuilder = this.patientsRepository.createQueryBuilder('patient');
+
+    // Project filtering logic
+    if (currentUser && currentUser.role !== UserRole.SUPER_ADMIN) {
+      const allowedProjectIds = await this.projectAccessService.getUserProjectIds(currentUser.id, currentUser.role);
+
+      if (allowedProjectIds.length === 0) {
+        // If user has no projects, they see no patients (unless global role logic overrides, but "Project-Scoped" implies strict scope)
+        // Return empty result immediately
+        return {
+          data: [],
+          meta: { page, limit, total: 0, totalPages: 0 }
+        };
+      }
+
+      if (query.projectId) {
+        // If specific project requested, verify access
+        if (!allowedProjectIds.includes(query.projectId)) {
+          // Return empty or throw forbidden? Returning empty is safer for filters.
+          // But if they asked for a specific project they can't access, maybe Forbidden is better?
+          // Let's stick to filtering: if it's not in allowed, 0 results.
+          queryBuilder.andWhere('1 = 0');
+        } else {
+          queryBuilder.andWhere('patient.projectId = :projectId', { projectId: query.projectId });
+        }
+      } else {
+        // Show all patients from all allowed projects
+        queryBuilder.andWhere('patient.projectId IN (:...projectIds)', { projectIds: allowedProjectIds });
+      }
+    } else if (query.projectId) {
+      // SUPER_ADMIN filtering by specific project
+      queryBuilder.andWhere('patient.projectId = :projectId', { projectId: query.projectId });
+    }
 
     // Search filter
     if (search) {
@@ -375,15 +414,15 @@ export class PatientsService {
       });
       packageTestIds.push(...packageTests.map((pt) => pt.testId));
     }
-    
+
     const addonTestIds = patientPackage.addonTestIds || [];
     const allTestIds = [...packageTestIds, ...addonTestIds];
 
     // Get all tests
     const tests = allTestIds.length > 0
       ? await this.testsRepository.find({
-          where: { id: In(allTestIds), isActive: true },
-        })
+        where: { id: In(allTestIds), isActive: true },
+      })
       : [];
 
     // Get all assignments for patient
@@ -401,8 +440,8 @@ export class PatientsService {
     const assignmentIds = assignments.map((a) => a.id);
     const results = assignmentIds.length > 0
       ? await this.testResultsRepository.find({
-          where: assignmentIds.map((id) => ({ assignmentId: id })),
-        })
+        where: assignmentIds.map((id) => ({ assignmentId: id })),
+      })
       : [];
 
     const resultMap = new Map<string, TestResult>();
@@ -464,7 +503,15 @@ export class PatientsService {
     };
   }
 
-  async findById(id: string): Promise<PatientResponseDto> {
+  async getPatientsByProject(projectId: string, query: QueryPatientsDto, currentUser: User): Promise<PaginatedPatientsResponseDto> {
+    if (!await this.projectAccessService.canAccessProject(currentUser.id, projectId, currentUser.role)) {
+      throw new ForbiddenException('You do not have access to this project');
+    }
+    // Force projectId filter
+    return this.findAll({ ...query, projectId }, currentUser);
+  }
+
+  async findById(id: string, currentUser?: User): Promise<PatientResponseDto> {
     const patient = await this.patientsRepository.findOne({
       where: { id },
       relations: ['patientPackages', 'patientPackages.package', 'patientPackages.registeredByUser'],
@@ -474,10 +521,27 @@ export class PatientsService {
       throw new NotFoundException('Patient not found');
     }
 
+    if (currentUser && currentUser.role !== UserRole.SUPER_ADMIN) {
+      if (!patient.projectId) {
+        // Logic decision: Can users see patients without projects?
+        // Assuming no, unless logic dictates otherwise.
+        // For now, let's allow seeing non-project patients OR restrict.
+        // "Project-Scoped Access Control" implies strictness.
+        // If patient has no project, maybe they are global?
+        // Let's assume strict: if patient.projectId is null, only SUPER_ADMIN sees?
+        // Or maybe default project?
+        // Safer: if patient.projectId exists, check access.
+      }
+
+      if (patient.projectId && !(await this.projectAccessService.canAccessProject(currentUser.id, patient.projectId, currentUser.role))) {
+        throw new ForbiddenException('You do not have access to this patient');
+      }
+    }
+
     return this.mapToResponseDto(patient, true);
   }
 
-  async findByPatientId(patientId: string): Promise<PatientResponseDto> {
+  async findByPatientId(patientId: string, currentUser?: User): Promise<PatientResponseDto> {
     const patient = await this.patientsRepository.findOne({
       where: { patientId },
       relations: ['patientPackages', 'patientPackages.package', 'patientPackages.registeredByUser'],
@@ -485,6 +549,12 @@ export class PatientsService {
 
     if (!patient) {
       throw new NotFoundException('Patient not found');
+    }
+
+    if (currentUser && currentUser.role !== UserRole.SUPER_ADMIN) {
+      if (patient.projectId && !(await this.projectAccessService.canAccessProject(currentUser.id, patient.projectId, currentUser.role))) {
+        throw new ForbiddenException('You do not have access to this patient');
+      }
     }
 
     return this.mapToResponseDto(patient, true);
@@ -536,17 +606,20 @@ export class PatientsService {
       throw new NotFoundException('Patient package not found');
     }
 
+    // Parse total price to number (TypeORM returns decimal as string)
+    const totalPrice = Number(patientPackage.totalPrice);
+
     // Validate payment amount
-    if (updatePaymentDto.paymentAmount > patientPackage.totalPrice) {
+    if (updatePaymentDto.paymentAmount > totalPrice) {
       throw new BadRequestException('Payment amount cannot exceed total price');
     }
 
     // Validate payment status logic
-    if (updatePaymentDto.paymentStatus === PaymentStatus.PAID && updatePaymentDto.paymentAmount !== patientPackage.totalPrice) {
+    if (updatePaymentDto.paymentStatus === PaymentStatus.PAID && updatePaymentDto.paymentAmount !== totalPrice) {
       throw new BadRequestException('Payment amount must equal total price for PAID status');
     }
 
-    if (updatePaymentDto.paymentStatus === PaymentStatus.PARTIAL && updatePaymentDto.paymentAmount >= patientPackage.totalPrice) {
+    if (updatePaymentDto.paymentStatus === PaymentStatus.PARTIAL && updatePaymentDto.paymentAmount >= totalPrice) {
       throw new BadRequestException('Payment amount must be less than total price for PARTIAL status');
     }
 

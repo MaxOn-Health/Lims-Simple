@@ -6,6 +6,8 @@ import { MainLayout } from '@/components/layouts/MainLayout/MainLayout';
 import { useAuthStore } from '@/store/auth.store';
 import { dashboardService, DashboardResponse } from '@/services/api/dashboard.service';
 import { Skeleton } from '@/components/common/Skeleton';
+import { ProjectSelector } from '@/components/common/ProjectSelector/ProjectSelector';
+import { useProjectFilter } from '@/hooks/useProjectFilter';
 import Link from 'next/link';
 import {
   Users,
@@ -19,6 +21,7 @@ import {
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const { selectedProjectId, setSelectedProjectId, projects, isLoading: projectsLoading } = useProjectFilter();
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +30,7 @@ export default function DashboardPage() {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        const response = await dashboardService.getStats();
+        const response = await dashboardService.getStats(selectedProjectId);
         setData(response);
       } catch (err) {
         setError('Failed to load dashboard stats');
@@ -37,8 +40,10 @@ export default function DashboardPage() {
       }
     };
 
-    fetchStats();
-  }, []);
+    if (!projectsLoading) {
+      fetchStats();
+    }
+  }, [selectedProjectId, projectsLoading]);
 
   const statCards = data ? [
     {
@@ -80,11 +85,19 @@ export default function DashboardPage() {
       <MainLayout>
         <div className="space-y-8">
           {/* Header */}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Welcome back, {user?.fullName} 👋
-            </p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+              <p className="mt-1 text-sm text-gray-600">
+                Welcome back, {user?.fullName} 👋
+              </p>
+            </div>
+            <ProjectSelector
+              selectedProjectId={selectedProjectId}
+              onSelect={setSelectedProjectId}
+              projects={projects}
+              showAllOption
+            />
           </div>
 
           {/* Stats Grid */}
@@ -218,8 +231,8 @@ export default function DashboardPage() {
                   <dt className="text-sm font-medium text-gray-500">Status</dt>
                   <dd className="mt-1">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user.isActive !== false
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
                       }`}>
                       {user.isActive !== false ? 'Active' : 'Inactive'}
                     </span>

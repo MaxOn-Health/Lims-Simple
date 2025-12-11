@@ -4,20 +4,26 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { useSearchStore } from '@/store/search.store';
+import { ProjectProvider } from '@/contexts/ProjectContext';
 import { Button } from '@/components/common/Button/Button';
 import { Sidebar } from '@/components/common/Sidebar/Sidebar';
 import { GlobalSearchModal } from '@/components/common/GlobalSearch';
 import { useGlobalSearchShortcut, getShortcutKey } from '@/hooks/useGlobalSearch';
 import { Search } from 'lucide-react';
 
+import { useProject } from '@/contexts/ProjectContext';
+import { ProjectSelector } from '@/components/common/ProjectSelector/ProjectSelector';
+
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
-export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+// MainContent component that uses the hooks
+const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const { openModal } = useSearchStore();
+  const { selectedProjectId, setSelectedProjectId, userProjects, isSuperAdmin } = useProject();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [shortcutKey, setShortcutKey] = useState('⌘K');
 
@@ -65,19 +71,33 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <nav className="bg-white shadow-sm">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
-              <div className="flex items-center">
+              <div className="flex items-center gap-4">
                 <button
                   type="button"
-                  className="md:hidden -ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+                  className="md:hidden -ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-inset focus:ring-primary-500"
                   onClick={() => setSidebarOpen(!sidebarOpen)}
                 >
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
-                <h1 className="ml-2 md:ml-0 text-xl font-semibold text-gray-900">
-                  LIMS Dashboard
-                </h1>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
+                  <h1 className="text-xl font-semibold text-gray-900">
+                    LIMS Dashboard
+                  </h1>
+                  {/* Project Selector in Header */}
+                  {(isSuperAdmin || userProjects.length > 0) && (
+                    <div className="hidden sm:block min-w-[200px]">
+                      <ProjectSelector
+                        selectedProjectId={selectedProjectId}
+                        onSelect={setSelectedProjectId}
+                        projects={userProjects}
+                        showAllOption={isSuperAdmin}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex items-center space-x-4">
                 {/* Search Button */}
@@ -108,6 +128,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </Button>
               </div>
             </div>
+            {/* Mobile Project Selector */}
+            {(isSuperAdmin || userProjects.length > 0) && (
+              <div className="sm:hidden pb-3">
+                <ProjectSelector
+                  selectedProjectId={selectedProjectId}
+                  onSelect={setSelectedProjectId}
+                  projects={userProjects}
+                  showAllOption={isSuperAdmin}
+                  className="w-full"
+                />
+              </div>
+            )}
           </div>
         </nav>
 
@@ -124,4 +156,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   );
 };
 
-
+export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  return (
+    <ProjectProvider>
+      <MainLayoutContent>{children}</MainLayoutContent>
+    </ProjectProvider>
+  );
+};

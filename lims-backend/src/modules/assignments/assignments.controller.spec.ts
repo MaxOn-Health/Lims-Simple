@@ -45,6 +45,7 @@ describe('AssignmentsController', () => {
             findByPatient: jest.fn(),
             findByAdmin: jest.fn(),
             findById: jest.fn(),
+            findAll: jest.fn(), // Added findAll to the mock service
           },
         },
       ],
@@ -62,10 +63,10 @@ describe('AssignmentsController', () => {
     it('should auto-assign tests for patient', async () => {
       jest.spyOn(service, 'autoAssign').mockResolvedValue([mockAssignmentResponse as any]);
 
-      const result = await controller.autoAssign('patient-1', mockUser);
+      const result = await controller.autoAssign('patient-1', {}, mockUser);
 
       expect(result).toEqual([mockAssignmentResponse]);
-      expect(service.autoAssign).toHaveBeenCalledWith('patient-1', mockUser.userId);
+      expect(service.autoAssign).toHaveBeenCalledWith('patient-1', mockUser.userId, {});
     });
   });
 
@@ -82,7 +83,8 @@ describe('AssignmentsController', () => {
       const result = await controller.manualAssign(dto, mockUser);
 
       expect(result).toEqual(mockAssignmentResponse);
-      expect(service.manualAssign).toHaveBeenCalledWith(dto, mockUser.userId);
+      expect(result).toEqual(mockAssignmentResponse);
+      expect(service.manualAssign).toHaveBeenCalledWith(dto, mockUser.userId, mockUser.role);
     });
   });
 
@@ -95,7 +97,8 @@ describe('AssignmentsController', () => {
       const result = await controller.reassign('assignment-1', dto, mockUser);
 
       expect(result).toEqual(mockAssignmentResponse);
-      expect(service.reassign).toHaveBeenCalledWith('assignment-1', dto, mockUser.userId);
+      expect(result).toEqual(mockAssignmentResponse);
+      expect(service.reassign).toHaveBeenCalledWith('assignment-1', dto, mockUser.userId, mockUser.role);
     });
   });
 
@@ -118,7 +121,7 @@ describe('AssignmentsController', () => {
       const result = await controller.getMyAssignments(undefined, adminUser);
 
       expect(result).toEqual([mockAssignmentResponse]);
-      expect(service.findByAdmin).toHaveBeenCalledWith(adminUser.userId, undefined);
+      expect(service.findByAdmin).toHaveBeenCalledWith(adminUser.userId, undefined, { id: adminUser.userId, role: adminUser.role });
     });
 
     it('should filter by status if provided', async () => {
@@ -128,7 +131,7 @@ describe('AssignmentsController', () => {
       const result = await controller.getMyAssignments('ASSIGNED', adminUser);
 
       expect(result).toEqual([mockAssignmentResponse]);
-      expect(service.findByAdmin).toHaveBeenCalledWith(adminUser.userId, AssignmentStatus.ASSIGNED);
+      expect(service.findByAdmin).toHaveBeenCalledWith(adminUser.userId, AssignmentStatus.ASSIGNED, { id: adminUser.userId, role: adminUser.role });
     });
   });
 

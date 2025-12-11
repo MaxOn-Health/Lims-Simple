@@ -78,7 +78,8 @@ describe('PatientsController', () => {
       const result = await controller.register(createDto, mockUser);
 
       expect(result).toEqual(mockPatientResponse);
-      expect(service.register).toHaveBeenCalledWith(createDto, mockUser.userId);
+      expect(result).toEqual(mockPatientResponse);
+      expect(service.register).toHaveBeenCalledWith(createDto, mockUser.userId, mockUser.role);
     });
   });
 
@@ -96,10 +97,10 @@ describe('PatientsController', () => {
 
       jest.spyOn(service, 'findAll').mockResolvedValue(mockPaginatedResponse as any);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll({ page: 1, limit: 10 }, mockUser);
 
       expect(result).toEqual(mockPaginatedResponse);
-      expect(service.findAll).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(service.findAll).toHaveBeenCalledWith({ page: 1, limit: 10 }, { id: mockUser.userId, role: mockUser.role });
     });
   });
 
@@ -107,10 +108,10 @@ describe('PatientsController', () => {
     it('should return patient by ID', async () => {
       jest.spyOn(service, 'findById').mockResolvedValue(mockPatientResponse as any);
 
-      const result = await controller.findOne('patient-1');
+      const result = await controller.findOne('patient-1', mockUser);
 
       expect(result).toEqual(mockPatientResponse);
-      expect(service.findById).toHaveBeenCalledWith('patient-1');
+      expect(service.findById).toHaveBeenCalledWith('patient-1', { id: mockUser.userId, role: mockUser.role });
     });
   });
 
@@ -118,10 +119,10 @@ describe('PatientsController', () => {
     it('should return patient by patient ID', async () => {
       jest.spyOn(service, 'findByPatientId').mockResolvedValue(mockPatientResponse as any);
 
-      const result = await controller.findByPatientId('PAT-20241110-0001');
+      const result = await controller.findByPatientId('PAT-20241110-0001', mockUser);
 
       expect(result).toEqual(mockPatientResponse);
-      expect(service.findByPatientId).toHaveBeenCalledWith('PAT-20241110-0001');
+      expect(service.findByPatientId).toHaveBeenCalledWith('PAT-20241110-0001', { id: mockUser.userId, role: mockUser.role });
     });
   });
 

@@ -13,6 +13,7 @@ import { AssignmentStatus } from '../assignments/constants/assignment-status.enu
 import { User, UserRole } from '../users/entities/user.entity';
 import { ResultValidationService } from './services/result-validation.service';
 import { AuditService } from '../audit/audit.service';
+import { ProjectAccessService } from '../../common/services/project-access.service';
 import { SubmitResultDto } from './dto/submit-result.dto';
 import { UpdateResultDto } from './dto/update-result.dto';
 import { Test as TestEntity, TestField } from '../tests/entities/test.entity';
@@ -26,6 +27,7 @@ describe('ResultsService', () => {
   let usersRepository: Repository<User>;
   let resultValidationService: ResultValidationService;
   let auditService: AuditService;
+  let projectAccessService: ProjectAccessService;
 
   const mockTest: TestEntity = {
     id: 'test-1',
@@ -150,6 +152,9 @@ describe('ResultsService', () => {
             findOne: jest.fn(),
             save: jest.fn(),
             find: jest.fn(),
+            manager: {
+              query: jest.fn().mockResolvedValue([{ projectId: 'project-1' }]),
+            },
           },
         },
         {
@@ -168,6 +173,12 @@ describe('ResultsService', () => {
           provide: AuditService,
           useValue: {
             log: jest.fn(),
+          },
+        },
+        {
+          provide: ProjectAccessService,
+          useValue: {
+            canAccessProject: jest.fn().mockResolvedValue(true),
           },
         },
       ],
@@ -206,7 +217,9 @@ describe('ResultsService', () => {
       jest.spyOn(testResultsRepository, 'save').mockResolvedValue(mockTestResult);
       jest.spyOn(assignmentsRepository, 'save').mockResolvedValue(mockAssignment);
 
-      const result = await service.submitResult(dto, 'admin-1');
+      jest.spyOn(assignmentsRepository, 'save').mockResolvedValue(mockAssignment);
+
+      const result = await service.submitResult(dto, { id: 'admin-1', role: UserRole.TEST_TECHNICIAN });
 
       expect(result).toBeDefined();
       expect(assignmentsRepository.save).toHaveBeenCalledWith(
@@ -223,7 +236,7 @@ describe('ResultsService', () => {
         resultValues: { result_value: 10.5 },
       };
 
-      await expect(service.submitResult(dto, 'admin-1')).rejects.toThrow(NotFoundException);
+      await expect(service.submitResult(dto, { id: 'admin-1', role: UserRole.TEST_TECHNICIAN })).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException if assignment does not belong to user', async () => {
@@ -234,7 +247,7 @@ describe('ResultsService', () => {
         resultValues: { result_value: 10.5 },
       };
 
-      await expect(service.submitResult(dto, 'different-admin')).rejects.toThrow(ForbiddenException);
+      await expect(service.submitResult(dto, { id: 'different-admin', role: UserRole.TEST_TECHNICIAN })).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw BadRequestException if assignment status is not IN_PROGRESS or ASSIGNED', async () => {
@@ -246,7 +259,7 @@ describe('ResultsService', () => {
         resultValues: { result_value: 10.5 },
       };
 
-      await expect(service.submitResult(dto, 'admin-1')).rejects.toThrow(BadRequestException);
+      await expect(service.submitResult(dto, { id: 'admin-1', role: UserRole.TEST_TECHNICIAN })).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if result already exists', async () => {
@@ -258,7 +271,7 @@ describe('ResultsService', () => {
         resultValues: { result_value: 10.5 },
       };
 
-      await expect(service.submitResult(dto, 'admin-1')).rejects.toThrow(BadRequestException);
+      await expect(service.submitResult(dto, { id: 'admin-1', role: UserRole.TEST_TECHNICIAN })).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if validation fails', async () => {
@@ -275,7 +288,7 @@ describe('ResultsService', () => {
         resultValues: {},
       };
 
-      await expect(service.submitResult(dto, 'admin-1')).rejects.toThrow(BadRequestException);
+      await expect(service.submitResult(dto, { id: 'admin-1', role: UserRole.TEST_TECHNICIAN })).rejects.toThrow(BadRequestException);
     });
 
     it('should include warnings in response if validation has warnings', async () => {
@@ -299,7 +312,7 @@ describe('ResultsService', () => {
       jest.spyOn(testResultsRepository, 'save').mockResolvedValue(mockTestResult);
       jest.spyOn(assignmentsRepository, 'save').mockResolvedValue({ ...freshAssignment, status: AssignmentStatus.SUBMITTED });
 
-      const result = await service.submitResult(dto, 'admin-1');
+      const result = await service.submitResult(dto, { id: 'admin-1', role: UserRole.TEST_TECHNICIAN });
 
       expect(result.warnings).toEqual(['Value outside normal range']);
     });

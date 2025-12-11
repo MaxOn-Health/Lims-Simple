@@ -31,10 +31,13 @@ export const bloodSamplesService = {
     return response.data;
   },
 
-  async getAllSamples(status?: BloodSampleStatus): Promise<BloodSample[]> {
+  async getAllSamples(status?: BloodSampleStatus, projectId?: string): Promise<BloodSample[]> {
     const params = new URLSearchParams();
     if (status) {
       params.append('status', status);
+    }
+    if (projectId) {
+      params.append('projectId', projectId);
     }
     const response = await apiClient.get<BloodSample[]>(
       `/blood-samples${params.toString() ? `?${params.toString()}` : ''}`

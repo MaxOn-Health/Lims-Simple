@@ -73,7 +73,7 @@ describe('ResultsController', () => {
       const result = await controller.submitResult(dto, mockUser);
 
       expect(result).toEqual(mockResultResponse);
-      expect(service.submitResult).toHaveBeenCalledWith(dto, mockUser.userId);
+      expect(service.submitResult).toHaveBeenCalledWith(dto, { id: mockUser.userId, role: mockUser.role });
     });
   });
 
@@ -81,10 +81,10 @@ describe('ResultsController', () => {
     it('should return result by assignment ID', async () => {
       jest.spyOn(service, 'findByAssignment').mockResolvedValue(mockResultResponse as any);
 
-      const result = await controller.findByAssignment('assignment-1');
+      const result = await controller.findByAssignment('assignment-1', mockUser);
 
       expect(result).toEqual(mockResultResponse);
-      expect(service.findByAssignment).toHaveBeenCalledWith('assignment-1');
+      expect(service.findByAssignment).toHaveBeenCalledWith('assignment-1', { id: mockUser.userId, role: mockUser.role });
     });
   });
 
@@ -92,10 +92,10 @@ describe('ResultsController', () => {
     it('should return results for patient', async () => {
       jest.spyOn(service, 'findByPatient').mockResolvedValue([mockResultResponse as any]);
 
-      const result = await controller.findByPatient('patient-1');
+      const result = await controller.findByPatient('patient-1', mockUser);
 
       expect(result).toEqual([mockResultResponse]);
-      expect(service.findByPatient).toHaveBeenCalledWith('patient-1');
+      expect(service.findByPatient).toHaveBeenCalledWith('patient-1', { id: mockUser.userId, role: mockUser.role });
     });
   });
 

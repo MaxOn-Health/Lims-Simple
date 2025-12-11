@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   Index,
   OneToMany,
   ManyToOne,
@@ -64,6 +65,9 @@ export class Patient {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @DeleteDateColumn({ name: 'deleted_at' })
+  deletedAt?: Date;
 
   @OneToMany(() => PatientPackage, (patientPackage) => patientPackage.patient)
   patientPackages: PatientPackage[];

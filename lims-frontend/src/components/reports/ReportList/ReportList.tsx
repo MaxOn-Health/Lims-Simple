@@ -18,10 +18,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Download } from 'lucide-react';
 import { Skeleton } from '@/components/common/Skeleton';
 import { downloadReport } from '@/utils/report-download';
+import { useProjectFilter } from '@/hooks/useProjectFilter';
+import { ProjectSelector } from '@/components/common/ProjectSelector/ProjectSelector';
 
 export const ReportList: React.FC = () => {
   const router = useRouter();
   const { addToast } = useUIStore();
+  const {
+    selectedProjectId,
+    setSelectedProjectId,
+    userProjects,
+    isSuperAdmin,
+    hasMultipleProjects,
+  } = useProjectFilter();
 
   const [reports, setReports] = useState<Report[]>([]);
   const [pagination, setPagination] = useState({
@@ -53,10 +62,11 @@ export const ReportList: React.FC = () => {
         dateFrom,
         dateTo,
         patientId: patientIdFilter,
+        projectId: selectedProjectId || undefined,
       };
 
       const response = await reportsService.getReports(queryParams);
-      
+
       // Filter by search query if provided
       let filteredReports = response.data;
       if (debouncedSearch) {
@@ -89,7 +99,7 @@ export const ReportList: React.FC = () => {
 
   useEffect(() => {
     fetchReports();
-  }, [pagination.page, pagination.limit, statusFilter, dateFrom, dateTo, patientIdFilter, debouncedSearch]);
+  }, [pagination.page, pagination.limit, statusFilter, dateFrom, dateTo, patientIdFilter, debouncedSearch, selectedProjectId]);
 
   const handleView = (reportId: string) => {
     router.push(`/reports/${reportId}`);
@@ -132,6 +142,16 @@ export const ReportList: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Project Filter */}
+      {(isSuperAdmin || hasMultipleProjects) && (
+        <ProjectSelector
+          selectedProjectId={selectedProjectId}
+          onSelect={setSelectedProjectId}
+          projects={userProjects}
+          className="mb-4"
+        />
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

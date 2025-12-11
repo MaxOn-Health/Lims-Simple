@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { DashboardResponseDto } from './dto/dashboard-stats.dto';
@@ -21,7 +21,10 @@ export class DashboardController {
         description: 'Dashboard statistics',
         type: DashboardResponseDto,
     })
-    async getStats(@CurrentUser() user: JwtPayload): Promise<DashboardResponseDto> {
-        return this.dashboardService.getStats(user.userId, user.role as UserRole);
+    async getStats(
+        @CurrentUser() user: JwtPayload,
+        @Query('projectId') projectId?: string,
+    ): Promise<DashboardResponseDto> {
+        return this.dashboardService.getStats(user.userId, user.role as UserRole, projectId);
     }
 }

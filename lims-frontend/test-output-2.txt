@@ -1,0 +1,71 @@
+
+Running 1 test using 1 worker
+
+Step 1: Logging in...
+BROWSER LOG: %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+BROWSER LOG: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+BROWSER LOG: Failed to fetch user projects: {statusCode: 500, message: Array(1), error: QueryFailedError, timestamp: 2025-12-12T17:28:27.015Z}
+BROWSER LOG: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+BROWSER LOG: Failed to fetch user projects: {statusCode: 500, message: Array(1), error: QueryFailedError, timestamp: 2025-12-12T17:28:27.205Z}
+BROWSER LOG: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+BROWSER LOG: Failed to fetch user projects: {statusCode: 500, message: Array(1), error: QueryFailedError, timestamp: 2025-12-12T17:28:27.312Z}
+BROWSER LOG: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+BROWSER LOG: Failed to fetch user projects: {statusCode: 500, message: Array(1), error: QueryFailedError, timestamp: 2025-12-12T17:28:27.405Z}
+Step 2: Navigating to new patient form...
+BROWSER LOG: %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+BROWSER LOG: Select is changing from uncontrolled to controlled. Components should not switch from controlled to uncontrolled (or vice versa). Decide between using a controlled or uncontrolled value for the lifetime of the component.
+BROWSER LOG: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+BROWSER LOG: Failed to fetch user projects: {statusCode: 500, message: Array(1), error: QueryFailedError, timestamp: 2025-12-12T17:28:33.544Z}
+BROWSER LOG: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+BROWSER LOG: Failed to fetch user projects: {statusCode: 500, message: Array(1), error: QueryFailedError, timestamp: 2025-12-12T17:28:33.626Z}
+BROWSER LOG: Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+BROWSER LOG: Failed to fetch user projects: {statusCode: 500, message: Array(1), error: QueryFailedError, timestamp: 2025-12-12T17:28:33.710Z}
+Registration Response: {
+  id: [32m'18ed7267-efee-44c7-a75e-09b4e72dc02f'[39m,
+  patientId: [32m'PAT-20251212-0007'[39m,
+  name: [32m'Test Patient 1765560508617'[39m,
+  age: [33m30[39m,
+  gender: [32m'MALE'[39m,
+  contactNumber: [32m'9433905951'[39m,
+  email: [32m'patient1765560508617@example.com'[39m,
+  employeeId: [1mnull[22m,
+  companyName: [1mnull[22m,
+  address: [32m'123 Test Street, QA Lab'[39m,
+  projectId: [1mnull[22m,
+  createdAt: [32m'2025-12-12T11:58:34.301Z'[39m,
+  updatedAt: [32m'2025-12-12T11:58:34.301Z'[39m
+}
+Step 6: Validating Success Message...
+FAILURE: Success message not found. Dumping page content:
+Is Form Still Visible? false
+Is Error Toast Visible? false
+  ✘  1 e2e/tests/patient-registration.spec.ts:7:9 › Register New Patient Workflow › should successfully register a new patient as receptionist (53.1s)
+
+
+  1) e2e/tests/patient-registration.spec.ts:7:9 › Register New Patient Workflow › should successfully register a new patient as receptionist 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByRole('heading', { name: 'Patient Registered Successfully' })
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 10000ms[22m
+    [2m  - waiting for getByRole('heading', { name: 'Patient Registered Successfully' })[22m
+
+
+      75 |         // despite 201 response.
+      76 |         try {
+    > 77 |             await expect(page.getByRole('heading', { name: 'Patient Registered Successfully' })).toBeVisible({ timeout: 10000 });
+         |                                                                                                  ^
+      78 |         } catch (e) {
+      79 |             console.log('FAILURE: Success message not found. Dumping page content:');
+      80 |             const content = await page.content();
+        at /Users/viswanthsai/Documents/Projects/my projects/Lims-Simple/lims-frontend/e2e/tests/patient-registration.spec.ts:77:98
+
+    Error Context: test-results/e2e-tests-patient-registra-361c8-new-patient-as-receptionist/error-context.md
+
+  1 failed
+    e2e/tests/patient-registration.spec.ts:7:9 › Register New Patient Workflow › should successfully register a new patient as receptionist 

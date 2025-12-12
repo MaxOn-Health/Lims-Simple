@@ -23,16 +23,36 @@ import { ReportStatus } from '../../modules/reports/constants/report-status.enum
 
 config();
 
+// Parse DATABASE_URL if available
+function parseDbUrl(url: string) {
+  const regex = /postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/;
+  const match = url.match(regex);
+  if (match) {
+    return {
+      username: decodeURIComponent(match[1]),
+      password: decodeURIComponent(match[2]),
+      host: match[3],
+      port: parseInt(match[4], 10),
+      database: match[5],
+    };
+  }
+  return null;
+}
+
+const dbUrl = process.env.DATABASE_URL;
+const parsed = dbUrl ? parseDbUrl(dbUrl) : null;
+
 const dataSource = new DataSource({
   type: 'postgres',
-  host: process.env.DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.DATABASE_PORT, 10) || 5432,
-  username: process.env.DATABASE_USERNAME || process.env.USER || 'postgres',
-  password: process.env.DATABASE_PASSWORD || '',
-  database: process.env.DATABASE_NAME || 'lims_db',
+  host: parsed?.host || process.env.DATABASE_HOST || 'localhost',
+  port: parsed?.port || parseInt(process.env.DATABASE_PORT, 10) || 5432,
+  username: parsed?.username || process.env.DATABASE_USERNAME || process.env.USER || 'postgres',
+  password: parsed?.password || process.env.DATABASE_PASSWORD || '',
+  database: parsed?.database || process.env.DATABASE_NAME || 'lims_db',
   entities: [path.join(__dirname, '../../**/*.entity{.ts,.js}')],
   synchronize: false,
   logging: false,
+  ssl: { rejectUnauthorized: false },
 });
 
 async function seedAll() {
@@ -435,7 +455,7 @@ async function createPatients(
         .where('patient.patientId LIKE :prefix', { prefix: `${prefix}%` })
         .orderBy('patient.patientId', 'DESC')
         .getMany();
-      
+
       let sequence = 1;
       if (existingPatients.length > 0) {
         const lastPatientId = existingPatients[0].patientId;
@@ -557,7 +577,7 @@ async function submitResults(
 
     // Create result values based on test fields
     const resultValues: Record<string, any> = {};
-    
+
     // Special handling for audiometry test - generate realistic hearing test values
     if (test?.adminRole === 'audiometry') {
       const frequencies = [125, 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000];
@@ -641,7 +661,7 @@ async function createBloodSamples(
         .where('sample.sampleId LIKE :prefix', { prefix: `${prefix}%` })
         .orderBy('sample.sampleId', 'DESC')
         .getMany();
-      
+
       let nextNumber = 1;
       if (samplesToday.length > 0) {
         const lastSampleId = samplesToday[0].sampleId;

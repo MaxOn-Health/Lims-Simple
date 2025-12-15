@@ -77,11 +77,11 @@ export const DynamicResultForm: React.FC<DynamicResultFormProps> = ({
           test.normalRangeMin,
           test.normalRangeMax
         )
-        : createSubmitResultSchema(
+        : ((createSubmitResultSchema(
           test.testFields,
           test.normalRangeMin,
           test.normalRangeMax
-        ));
+        ) as unknown) as z.AnyZodObject).omit({ assignmentId: true }));
 
   const form = useForm<SubmitResultRequest | UpdateResultRequest>({
     resolver: zodResolver(schema),

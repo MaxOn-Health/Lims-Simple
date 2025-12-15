@@ -516,10 +516,12 @@ export class AssignmentsService {
 
     if (currentUser && currentUser.role !== UserRole.SUPER_ADMIN) {
       const allowedProjectIds = await this.projectAccessService.getUserProjectIds(currentUser.id, currentUser.role as UserRole);
+
       if (allowedProjectIds.length > 0) {
-        qb.andWhere('patient.projectId IN (:...allowedProjectIds)', { allowedProjectIds });
+        qb.andWhere('(patient.projectId IN (:...allowedProjectIds) OR patient.projectId IS NULL)', { allowedProjectIds });
       } else {
-        return [];
+        // If no project memberships, can ONLY see non-project patients
+        qb.andWhere('patient.projectId IS NULL');
       }
     }
 

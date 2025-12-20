@@ -76,19 +76,24 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
           },
         };
 
+        const sslConfig = {
+          ssl: {
+            rejectUnauthorized: false,
+          },
+        };
+
         // If DATABASE_URL is provided, use url; otherwise use individual properties
         if (dbConfig?.url) {
           return {
             ...baseConfig,
+            ...sslConfig,
             url: dbConfig.url,
-            ssl: {
-              rejectUnauthorized: false,
-            },
           };
         }
 
         return {
           ...baseConfig,
+          ...sslConfig,
           host: dbConfig?.host || 'localhost',
           port: dbConfig?.port || 5432,
           username: dbConfig?.username || 'postgres',

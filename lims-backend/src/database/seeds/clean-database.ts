@@ -18,17 +18,27 @@ import { AuditLog } from '../../modules/audit/entities/audit-log.entity';
 
 config();
 
-const dataSource = new DataSource({
+const dataSourceOptions: any = {
   type: 'postgres',
-  host: process.env.DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.DATABASE_PORT, 10) || 5432,
-  username: process.env.DATABASE_USERNAME || process.env.USER || 'postgres',
-  password: process.env.DATABASE_PASSWORD || '',
-  database: process.env.DATABASE_NAME || 'lims_db',
   entities: [path.join(__dirname, '../../**/*.entity{.ts,.js}')],
   synchronize: false,
   logging: false,
-});
+};
+
+if (process.env.DATABASE_URL) {
+  dataSourceOptions.url = process.env.DATABASE_URL;
+  dataSourceOptions.ssl = {
+    rejectUnauthorized: false, // For Supabase/Render
+  };
+} else {
+  dataSourceOptions.host = process.env.DATABASE_HOST || 'localhost';
+  dataSourceOptions.port = parseInt(process.env.DATABASE_PORT, 10) || 5432;
+  dataSourceOptions.username = process.env.DATABASE_USERNAME || process.env.USER || 'postgres';
+  dataSourceOptions.password = process.env.DATABASE_PASSWORD || '';
+  dataSourceOptions.database = process.env.DATABASE_NAME || 'lims_db';
+}
+
+const dataSource = new DataSource(dataSourceOptions);
 
 async function cleanDatabase() {
   try {
@@ -53,7 +63,7 @@ async function cleanDatabase() {
     console.log('\n=== Cleaning Database ===\n');
 
     // Delete in order to respect foreign key constraints (child tables first)
-    
+
     console.log('Deleting reports...');
     await dataSource.getRepository(Report).createQueryBuilder().delete().execute();
     console.log('✓ Reports deleted');

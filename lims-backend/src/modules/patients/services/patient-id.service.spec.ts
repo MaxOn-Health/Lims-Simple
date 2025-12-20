@@ -58,6 +58,7 @@ describe('PatientIdService', () => {
       const existingPatient: Patient = {
         id: 'test-id',
         patientId: `${prefix}0001`,
+        barcodeNumber: '1234567890',
         name: 'Test',
         age: 30,
         gender: 'MALE' as any,
@@ -100,6 +101,7 @@ describe('PatientIdService', () => {
       const conflictingPatient: Patient = {
         id: 'test-id',
         patientId: `${prefix}0001`,
+        barcodeNumber: '1234567890',
         name: 'Test',
         age: 30,
         gender: 'MALE' as any,

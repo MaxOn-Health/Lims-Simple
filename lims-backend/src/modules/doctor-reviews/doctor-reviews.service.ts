@@ -574,6 +574,7 @@ export class DoctorReviewsService {
       projectId: patient.projectId,
       createdAt: patient.createdAt,
       updatedAt: patient.updatedAt,
+      barcodeNumber: patient.barcodeNumber,
     };
   }
 

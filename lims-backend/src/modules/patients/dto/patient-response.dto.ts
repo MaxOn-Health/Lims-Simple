@@ -41,6 +41,10 @@ export class PatientResponseDto {
   @ApiProperty({ description: 'Patient ID (PAT-YYYYMMDD-XXXX)', example: 'PAT-20241110-0001' })
   patientId: string;
 
+  @ApiPropertyOptional({ description: 'Unique 10-digit barcode number', example: '2535445000' })
+  barcodeNumber: string | null;
+
+
   @ApiProperty({ description: 'Patient name', example: 'John Doe' })
   name: string;
 

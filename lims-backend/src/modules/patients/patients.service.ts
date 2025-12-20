@@ -147,9 +147,13 @@ export class PatientsService {
       testIds,
     );
 
+    // Generate barcode number
+    const barcodeNumber = this.generateBarcodeNumber();
+
     // Create patient
     const patient = this.patientsRepository.create({
       patientId,
+      barcodeNumber,
       name: createPatientDto.name,
       age: createPatientDto.age,
       gender: createPatientDto.gender,
@@ -656,6 +660,7 @@ export class PatientsService {
     const dto: PatientResponseDto = {
       id: patient.id,
       patientId: patient.patientId,
+      barcodeNumber: patient.barcodeNumber,
       name: patient.name,
       age: patient.age,
       gender: patient.gender,
@@ -685,6 +690,26 @@ export class PatientsService {
     }
 
     return dto;
+  }
+
+  private generateBarcodeNumber(): string {
+    const now = new Date();
+    // YY
+    const year = now.getFullYear().toString().slice(-2);
+
+    // DDD (Day of Year)
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const day = Math.floor(diff / oneDay);
+    const dayStr = day.toString().padStart(3, '0');
+
+    // SSSSS (Seconds of Day)
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const seconds = Math.floor((now.getTime() - midnight.getTime()) / 1000);
+    const secondsStr = seconds.toString().padStart(5, '0');
+
+    return `${year}${dayStr}${secondsStr}`;
   }
 }
 

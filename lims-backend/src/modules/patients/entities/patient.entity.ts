@@ -23,6 +23,10 @@ export class Patient {
   @Index()
   patientId: string;
 
+  @Column({ type: 'varchar', length: 10, unique: true, name: 'barcode_number', nullable: true })
+  @Index()
+  barcodeNumber: string;
+
   @Column({ type: 'varchar', length: 255 })
   name: string;
 

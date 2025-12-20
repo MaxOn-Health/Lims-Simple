@@ -37,6 +37,7 @@ describe('PatientsService', () => {
   const mockPatient: Patient = {
     id: 'patient-1',
     patientId: 'PAT-20241110-0001',
+    barcodeNumber: '1234567890',
     name: 'John Doe',
     age: 35,
     gender: Gender.MALE,

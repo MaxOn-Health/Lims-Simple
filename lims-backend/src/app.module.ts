@@ -76,27 +76,11 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
           },
         };
 
-        const sslConfig = {
-          rejectUnauthorized: false,
-        };
-
-        const extraConfig = {
-          ...baseConfig.extra,
-          ssl: sslConfig,
-        };
-
         // If DATABASE_URL is provided, use url; otherwise use individual properties
         if (dbConfig?.url) {
-          let connectionUrl = dbConfig.url;
-          if (connectionUrl.includes('sslmode=require')) {
-            connectionUrl = connectionUrl.replace('sslmode=require', 'sslmode=no-verify');
-          }
-
           return {
             ...baseConfig,
-            url: connectionUrl,
-            ssl: sslConfig, // Keep this as well
-            extra: extraConfig, // Explicitly set extra options for driver
+            url: dbConfig.url,
           };
         }
 
@@ -107,8 +91,6 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
           username: dbConfig?.username || 'postgres',
           password: dbConfig?.password || 'postgres',
           database: dbConfig?.database || 'lims_db',
-          ssl: sslConfig,
-          extra: extraConfig, // Explicitly set extra options for driver
         };
       },
       inject: [ConfigService],

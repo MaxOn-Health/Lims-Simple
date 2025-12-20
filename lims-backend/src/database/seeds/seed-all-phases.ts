@@ -25,35 +25,63 @@ config();
 
 // Parse DATABASE_URL if available
 function parseDbUrl(url: string) {
-  const regex = /postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/;
-  const match = url.match(regex);
+  // Handle URLs with port
+  const regexWithPort = /postgresql:\/\/([^:]+):([^@]+)@([^:/]+):(\d+)\/([^?]+)/;
+  // Handle URLs without port (uses default 5432)
+  const regexWithoutPort = /postgresql:\/\/([^:]+):([^@]+)@([^:/]+)\/([^?]+)/;
+
+  let match = url.match(regexWithPort);
   if (match) {
     return {
       username: decodeURIComponent(match[1]),
       password: decodeURIComponent(match[2]),
       host: match[3],
       port: parseInt(match[4], 10),
-      database: match[5],
+      database: match[5].split('?')[0],
     };
   }
+
+  match = url.match(regexWithoutPort);
+  if (match) {
+    return {
+      username: decodeURIComponent(match[1]),
+      password: decodeURIComponent(match[2]),
+      host: match[3],
+      port: 5432, // Default PostgreSQL port
+      database: match[4].split('?')[0],
+    };
+  }
+
   return null;
 }
 
 const dbUrl = process.env.DATABASE_URL;
 const parsed = dbUrl ? parseDbUrl(dbUrl) : null;
 
-const dataSource = new DataSource({
-  type: 'postgres',
-  host: parsed?.host || process.env.DATABASE_HOST || 'localhost',
-  port: parsed?.port || parseInt(process.env.DATABASE_PORT, 10) || 5432,
-  username: parsed?.username || process.env.DATABASE_USERNAME || process.env.USER || 'postgres',
-  password: parsed?.password || process.env.DATABASE_PASSWORD || '',
-  database: parsed?.database || process.env.DATABASE_NAME || 'lims_db',
-  entities: [path.join(__dirname, '../../**/*.entity{.ts,.js}')],
-  synchronize: false,
-  logging: false,
-  ssl: { rejectUnauthorized: false },
-});
+// If URL parsing failed but URL exists, use URL directly
+const dataSource = new DataSource(
+  dbUrl && !parsed
+    ? {
+      type: 'postgres',
+      url: dbUrl,
+      entities: [path.join(__dirname, '../../**/*.entity{.ts,.js}')],
+      synchronize: false,
+      logging: false,
+      ssl: true,
+    }
+    : {
+      type: 'postgres',
+      host: parsed?.host || process.env.DATABASE_HOST || 'localhost',
+      port: parsed?.port || parseInt(process.env.DATABASE_PORT, 10) || 5432,
+      username: parsed?.username || process.env.DATABASE_USERNAME || process.env.USER || 'postgres',
+      password: parsed?.password || process.env.DATABASE_PASSWORD || '',
+      database: parsed?.database || process.env.DATABASE_NAME || 'lims_db',
+      entities: [path.join(__dirname, '../../**/*.entity{.ts,.js}')],
+      synchronize: false,
+      logging: false,
+      ssl: parsed ? true : false,
+    }
+);
 
 async function seedAll() {
   try {

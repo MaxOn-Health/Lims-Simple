@@ -26,6 +26,7 @@ export interface PatientPackage {
 export interface Patient {
   id: string;
   patientId: string;
+  barcodeNumber?: string | null;
   name: string;
   age: number;
   gender: Gender;

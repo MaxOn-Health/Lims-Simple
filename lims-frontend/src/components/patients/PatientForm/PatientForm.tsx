@@ -34,6 +34,7 @@ import { getErrorMessage } from '@/utils/error-handler';
 import { ApiError } from '@/types/api.types';
 import { PatientIdDisplay } from '../PatientIdDisplay/PatientIdDisplay';
 import { IndianRupee } from 'lucide-react';
+import { BarcodePrintDialog } from '@/components/common/Barcode/BarcodePrintDialog';
 
 interface PatientFormProps {
   onSuccess?: (patientId: string) => void;
@@ -51,6 +52,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
   const [isLoadingTests, setIsLoadingTests] = useState(true);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [createdPatientId, setCreatedPatientId] = useState<string | null>(null);
+
+  // New state for barcode printing
+  const [showBarcodeDialog, setShowBarcodeDialog] = useState(false);
+  const [lastRegisteredPatient, setLastRegisteredPatient] = useState<{ name: string, barcodeNumber: string } | null>(null);
 
   const {
     register,
@@ -169,6 +174,16 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     try {
       const patient = await patientsService.registerPatient(data);
       setCreatedPatientId(patient.patientId);
+
+      // Store patient details for barcode printing and open dialog if barcode exists
+      if (patient.barcodeNumber) {
+        setLastRegisteredPatient({
+          name: patient.name,
+          barcodeNumber: patient.barcodeNumber
+        });
+        setShowBarcodeDialog(true);
+      }
+
       addToast({
         type: 'success',
         message: 'Patient registered successfully',
@@ -193,14 +208,30 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <PatientIdDisplay patientId={createdPatientId} />
-          <div className="flex gap-3">
+
+          <div className="flex gap-3 flex-wrap">
             <Button variant="primary" onClick={() => router.push('/patients')}>
               View All Patients
             </Button>
             <Button variant="outline" onClick={() => router.push('/patients/new')}>
               Register Another Patient
             </Button>
+            {lastRegisteredPatient && (
+              <Button variant="secondary" onClick={() => setShowBarcodeDialog(true)}>
+                Print Barcodes
+              </Button>
+            )}
           </div>
+
+          {lastRegisteredPatient && (
+            <BarcodePrintDialog
+              open={showBarcodeDialog}
+              onClose={() => setShowBarcodeDialog(false)}
+              barcodeNumber={lastRegisteredPatient.barcodeNumber}
+              patientName={lastRegisteredPatient.name}
+            />
+          )}
+
         </CardContent>
       </Card>
     );
@@ -557,4 +588,3 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
     </form>
   );
 };
-

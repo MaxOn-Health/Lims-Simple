@@ -87,10 +87,15 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
         // If DATABASE_URL is provided, use url; otherwise use individual properties
         if (dbConfig?.url) {
+          let connectionUrl = dbConfig.url;
+          if (connectionUrl.includes('sslmode=require')) {
+            connectionUrl = connectionUrl.replace('sslmode=require', 'sslmode=no-verify');
+          }
+
           return {
             ...baseConfig,
-            url: dbConfig.url,
-            ssl: sslConfig,
+            url: connectionUrl,
+            ssl: sslConfig, // Keep this as well
             extra: extraConfig, // Explicitly set extra options for driver
           };
         }

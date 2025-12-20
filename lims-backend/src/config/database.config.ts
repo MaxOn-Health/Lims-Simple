@@ -46,6 +46,12 @@ export default registerAs('database', () => {
     config.ssl = {
       rejectUnauthorized: false,
     };
+
+    // Ensure we handle the "sslmode=require" which might conflict
+    if (config.url.includes('sslmode=require')) {
+      // We can rely on the ssl config object instead, or change to no-verify
+      // config.url = config.url.replace('sslmode=require', 'sslmode=no-verify');
+    }
   } else {
     config.host = process.env.DATABASE_HOST || 'localhost';
     config.port = parseInt(process.env.DATABASE_PORT, 10) || 5432;

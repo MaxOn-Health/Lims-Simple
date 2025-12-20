@@ -77,28 +77,33 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
         };
 
         const sslConfig = {
-          ssl: {
-            rejectUnauthorized: false,
-          },
+          rejectUnauthorized: false,
+        };
+
+        const extraConfig = {
+          ...baseConfig.extra,
+          ssl: sslConfig,
         };
 
         // If DATABASE_URL is provided, use url; otherwise use individual properties
         if (dbConfig?.url) {
           return {
             ...baseConfig,
-            ...sslConfig,
             url: dbConfig.url,
+            ssl: sslConfig,
+            extra: extraConfig, // Explicitly set extra options for driver
           };
         }
 
         return {
           ...baseConfig,
-          ...sslConfig,
           host: dbConfig?.host || 'localhost',
           port: dbConfig?.port || 5432,
           username: dbConfig?.username || 'postgres',
           password: dbConfig?.password || 'postgres',
           database: dbConfig?.database || 'lims_db',
+          ssl: sslConfig,
+          extra: extraConfig, // Explicitly set extra options for driver
         };
       },
       inject: [ConfigService],

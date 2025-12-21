@@ -17,6 +17,9 @@ interface BarcodePrintDialogProps {
   onClose: () => void;
   barcodeNumber: string;
   patientName: string;
+  patientAge?: number;
+  patientGender?: string;
+  registrationDate?: Date;
 }
 
 export const BarcodePrintDialog: React.FC<BarcodePrintDialogProps> = ({
@@ -24,9 +27,40 @@ export const BarcodePrintDialog: React.FC<BarcodePrintDialogProps> = ({
   onClose,
   barcodeNumber,
   patientName,
+  patientAge,
+  patientGender,
+  registrationDate,
 }) => {
   const [copies, setCopies] = useState<number>(1);
   const [rotate, setRotate] = useState<boolean>(false);
+
+  // Format gender for display
+  const genderDisplay = patientGender
+    ? patientGender === 'MALE' ? 'M' : patientGender === 'FEMALE' ? 'F' : 'O'
+    : '';
+
+  // Format date for display
+  const formatDate = (date?: Date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = d.getHours() >= 12 ? 'PM' : 'AM';
+    const hour12 = d.getHours() % 12 || 12;
+    return `${day}/${month}/${year} ${hour12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+  };
+
+  // Build patient info line
+  const patientInfo = [
+    patientName.toUpperCase(),
+    patientAge ? `${patientAge} years` : '',
+    genderDisplay ? `(${genderDisplay})` : ''
+  ].filter(Boolean).join(' ');
+
+  const dateInfo = formatDate(registrationDate || new Date());
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
@@ -44,7 +78,7 @@ export const BarcodePrintDialog: React.FC<BarcodePrintDialogProps> = ({
             body {
               margin: 0;
               padding: 10px;
-              font-family: sans-serif;
+              font-family: Arial, sans-serif;
             }
             .barcode-container {
               display: flex;
@@ -55,12 +89,29 @@ export const BarcodePrintDialog: React.FC<BarcodePrintDialogProps> = ({
               width: ${rotate ? '25mm' : '50mm'};
               height: ${rotate ? '50mm' : '25mm'};
               display: flex;
+              flex-direction: column;
               align-items: center;
               justify-content: center;
               border: 1px dashed #ccc;
               box-sizing: border-box;
               page-break-inside: avoid;
               overflow: hidden;
+              padding: 2mm;
+            }
+            .barcode-svg {
+              flex-shrink: 0;
+            }
+            .patient-info {
+              font-size: 7pt;
+              text-align: center;
+              line-height: 1.2;
+              margin-top: 1mm;
+              font-weight: bold;
+            }
+            .date-info {
+              font-size: 6pt;
+              text-align: center;
+              color: #333;
             }
             /* Hide border when printing */
             @media print {
@@ -69,16 +120,9 @@ export const BarcodePrintDialog: React.FC<BarcodePrintDialogProps> = ({
               }
             }
             svg {
-              width: 100% !important;
-              height: 100% !important;
-              ${rotate ? 'transform: rotate(90deg);' : ''}
-              /* Adjust scale/size if rotated to ensure it fits */
-              ${rotate ? 'max-width: 50mm; max-height: 25mm;' : ''} 
-            }
-          </style>
-            svg {
-              width: 100% !important;
-              height: 100% !important;
+              max-width: 100%;
+              height: auto;
+              ${rotate ? 'transform: rotate(90deg);' : ''} 
             }
           </style>
         </head>
@@ -86,14 +130,16 @@ export const BarcodePrintDialog: React.FC<BarcodePrintDialogProps> = ({
           <div class="barcode-container">
             ${Array.from({ length: copies }).map(() => `
               <div class="barcode-wrapper">
-                 <svg class="barcode"
+                 <svg class="barcode barcode-svg"
                       jsbarcode-value="${barcodeNumber}"
-                      jsbarcode-width="1.5"
-                      jsbarcode-height="40"
-                      jsbarcode-fontSize="14"
+                      jsbarcode-width="1.2"
+                      jsbarcode-height="25"
+                      jsbarcode-fontSize="10"
                       jsbarcode-margin="0"
                       jsbarcode-displayValue="true">
                  </svg>
+                 <div class="patient-info">${patientInfo}</div>
+                 <div class="date-info">${dateInfo}</div>
               </div>
             `).join('')}
           </div>

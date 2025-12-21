@@ -55,7 +55,13 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
 
   // New state for barcode printing
   const [showBarcodeDialog, setShowBarcodeDialog] = useState(false);
-  const [lastRegisteredPatient, setLastRegisteredPatient] = useState<{ name: string, barcodeNumber: string } | null>(null);
+  const [lastRegisteredPatient, setLastRegisteredPatient] = useState<{
+    name: string,
+    barcodeNumber: string,
+    age?: number,
+    gender?: string,
+    registrationDate?: Date
+  } | null>(null);
 
   const {
     register,
@@ -179,7 +185,10 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
       if (patient.barcodeNumber) {
         setLastRegisteredPatient({
           name: patient.name,
-          barcodeNumber: patient.barcodeNumber
+          barcodeNumber: patient.barcodeNumber,
+          age: patient.age,
+          gender: patient.gender,
+          registrationDate: patient.createdAt ? new Date(patient.createdAt) : new Date()
         });
         setShowBarcodeDialog(true);
       }
@@ -229,6 +238,9 @@ export const PatientForm: React.FC<PatientFormProps> = ({ onSuccess }) => {
               onClose={() => setShowBarcodeDialog(false)}
               barcodeNumber={lastRegisteredPatient.barcodeNumber}
               patientName={lastRegisteredPatient.name}
+              patientAge={lastRegisteredPatient.age}
+              patientGender={lastRegisteredPatient.gender}
+              registrationDate={lastRegisteredPatient.registrationDate}
             />
           )}
 

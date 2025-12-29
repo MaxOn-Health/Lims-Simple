@@ -35,6 +35,9 @@ export const TestFieldsBuilder: React.FC<TestFieldsBuilderProps> = ({
       field_type: TestFieldType.TEXT,
       required: false,
       options: null,
+      unit: null,
+      normalRangeMin: null,
+      normalRangeMax: null,
     });
   };
 
@@ -61,6 +64,7 @@ export const TestFieldsBuilder: React.FC<TestFieldsBuilderProps> = ({
       {fields.map((field, index) => {
         const fieldType = watch(`testFields.${index}.field_type`);
         const isSelectType = fieldType === TestFieldType.SELECT;
+        const isNumberType = fieldType === TestFieldType.NUMBER;
 
         return (
           <div
@@ -146,6 +150,62 @@ export const TestFieldsBuilder: React.FC<TestFieldsBuilderProps> = ({
                 Required
               </label>
             </div>
+
+            {isNumberType && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                <div>
+                  <Input
+                    id={`testFields.${index}.unit`}
+                    label="Unit"
+                    placeholder="e.g., gm/dL"
+                    error={errors.testFields?.[index]?.unit?.message}
+                    {...control.register(`testFields.${index}.unit`)}
+                  />
+                </div>
+                <div>
+                  <Controller
+                    name={`testFields.${index}.normalRangeMin`}
+                    control={control}
+                    render={({ field: minField }) => (
+                      <Input
+                        id={`testFields.${index}.normalRangeMin`}
+                        label="Range Min"
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g., 11.0"
+                        error={errors.testFields?.[index]?.normalRangeMin?.message}
+                        value={minField.value ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          minField.onChange(val === '' ? null : parseFloat(val));
+                        }}
+                      />
+                    )}
+                  />
+                </div>
+                <div>
+                  <Controller
+                    name={`testFields.${index}.normalRangeMax`}
+                    control={control}
+                    render={({ field: maxField }) => (
+                      <Input
+                        id={`testFields.${index}.normalRangeMax`}
+                        label="Range Max"
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g., 16.0"
+                        error={errors.testFields?.[index]?.normalRangeMax?.message}
+                        value={maxField.value ?? ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          maxField.onChange(val === '' ? null : parseFloat(val));
+                        }}
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+            )}
 
             {isSelectType && (
               <div>

@@ -36,10 +36,15 @@ export const ResultFieldRenderer: React.FC<ResultFieldRendererProps> = ({
   const fieldLabel = getFieldLabel(field.field_name);
   const fieldId = `field-${field.field_name}`;
   const isNumberField = field.field_type === TestFieldType.NUMBER;
+
+  // Use per-field range/unit if available, otherwise fall back to test-level
+  const rangeMin = field.normalRangeMin ?? test?.normalRangeMin ?? null;
+  const rangeMax = field.normalRangeMax ?? test?.normalRangeMax ?? null;
+  const unit = field.unit ?? test?.unit ?? null;
+
   const showRangeIndicator =
     isNumberField &&
-    test &&
-    (test.normalRangeMin !== null || test.normalRangeMax !== null) &&
+    (rangeMin !== null || rangeMax !== null) &&
     value !== undefined &&
     value !== null &&
     !isNaN(Number(value));
@@ -71,9 +76,9 @@ export const ResultFieldRenderer: React.FC<ResultFieldRendererProps> = ({
                   {showRangeIndicator && (
                     <NormalRangeIndicator
                       value={Number(formField.value)}
-                      min={test!.normalRangeMin}
-                      max={test!.normalRangeMax}
-                      unit={test!.unit}
+                      min={rangeMin}
+                      max={rangeMax}
+                      unit={unit}
                     />
                   )}
                 </>

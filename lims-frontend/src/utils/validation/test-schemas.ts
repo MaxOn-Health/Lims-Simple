@@ -9,6 +9,19 @@ export const testFieldSchema = z
     }),
     required: z.boolean(),
     options: z.array(z.string()).nullable(),
+    unit: z.string().max(50, 'Unit must not exceed 50 characters').nullable().optional(),
+    normalRangeMin: z
+      .number({
+        invalid_type_error: 'Must be a number',
+      })
+      .nullable()
+      .optional(),
+    normalRangeMax: z
+      .number({
+        invalid_type_error: 'Must be a number',
+      })
+      .nullable()
+      .optional(),
   })
   .refine(
     (data) => {
@@ -20,6 +33,23 @@ export const testFieldSchema = z
     {
       message: 'Options are required for select field type',
       path: ['options'],
+    }
+  )
+  .refine(
+    (data) => {
+      if (
+        data.normalRangeMin !== undefined &&
+        data.normalRangeMin !== null &&
+        data.normalRangeMax !== undefined &&
+        data.normalRangeMax !== null
+      ) {
+        return data.normalRangeMax >= data.normalRangeMin;
+      }
+      return true;
+    },
+    {
+      message: 'Max must be >= min',
+      path: ['normalRangeMax'],
     }
   );
 

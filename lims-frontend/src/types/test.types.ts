@@ -17,6 +17,9 @@ export interface TestField {
   field_type: TestFieldType;
   required: boolean;
   options: string[] | null;
+  unit?: string | null;
+  normalRangeMin?: number | null;
+  normalRangeMax?: number | null;
 }
 
 export interface Test {

@@ -312,16 +312,16 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, test, onUpdate }
                       </div>
                       <p className="text-base text-foreground">{formattedValue}</p>
                       {field.field_type === TestFieldType.NUMBER &&
-                        test.normalRangeMin !== null &&
-                        test.normalRangeMax !== null &&
+                        ((field.normalRangeMin ?? test.normalRangeMin) !== null ||
+                          (field.normalRangeMax ?? test.normalRangeMax) !== null) &&
                         value !== undefined &&
                         value !== null &&
                         !isNaN(Number(value)) && (
                           <NormalRangeIndicator
                             value={Number(value)}
-                            min={test.normalRangeMin}
-                            max={test.normalRangeMax}
-                            unit={test.unit}
+                            min={field.normalRangeMin ?? test.normalRangeMin}
+                            max={field.normalRangeMax ?? test.normalRangeMax}
+                            unit={field.unit ?? test.unit}
                           />
                         )}
                       <Separator />
@@ -351,16 +351,16 @@ export const ResultView: React.FC<ResultViewProps> = ({ result, test, onUpdate }
                     </div>
                     <p className="text-base text-foreground">{formattedValue}</p>
                     {field.field_type === TestFieldType.NUMBER &&
-                      test.normalRangeMin !== null &&
-                      test.normalRangeMax !== null &&
+                      ((field.normalRangeMin ?? test.normalRangeMin) !== null ||
+                        (field.normalRangeMax ?? test.normalRangeMax) !== null) &&
                       value !== undefined &&
                       value !== null &&
                       !isNaN(Number(value)) && (
                         <NormalRangeIndicator
                           value={Number(value)}
-                          min={test.normalRangeMin}
-                          max={test.normalRangeMax}
-                          unit={test.unit}
+                          min={field.normalRangeMin ?? test.normalRangeMin}
+                          max={field.normalRangeMax ?? test.normalRangeMax}
+                          unit={field.unit ?? test.unit}
                         />
                       )}
                     <Separator />

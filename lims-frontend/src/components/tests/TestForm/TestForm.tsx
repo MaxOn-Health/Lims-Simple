@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -11,10 +11,11 @@ import {
   UpdateTestFormData,
 } from '@/utils/validation/test-schemas';
 import { Test, TestCategory, TEST_CATEGORIES } from '@/types/test.types';
-import { TEST_ADMIN_TYPES } from '@/types/user.types';
+import { AdminRole } from '@/types/admin-role.types';
 import { Input } from '@/components/common/Input/Input';
 import { Button } from '@/components/common/Button/Button';
 import { testsService } from '@/services/api/tests.service';
+import { adminRolesService } from '@/services/api/admin-roles.service';
 import { useUIStore } from '@/store/ui.store';
 import { getErrorMessage } from '@/utils/error-handler';
 import { ApiError } from '@/types/api.types';
@@ -34,6 +35,23 @@ export const TestForm: React.FC<TestFormProps> = ({
   const router = useRouter();
   const { addToast } = useUIStore();
   const isEditMode = mode === 'edit' && !!test;
+
+  const [adminRoles, setAdminRoles] = useState<AdminRole[]>([]);
+  const [isLoadingRoles, setIsLoadingRoles] = useState(true);
+
+  useEffect(() => {
+    const fetchAdminRoles = async () => {
+      try {
+        const roles = await adminRolesService.getAdminRoles();
+        setAdminRoles(roles);
+      } catch (error) {
+        console.error('Failed to fetch admin roles:', error);
+      } finally {
+        setIsLoadingRoles(false);
+      }
+    };
+    fetchAdminRoles();
+  }, []);
 
   const schema = isEditMode ? updateTestSchema : createTestSchema;
 
@@ -93,9 +111,9 @@ export const TestForm: React.FC<TestFormProps> = ({
     label: cat.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
   }));
 
-  const adminRoleOptions = TEST_ADMIN_TYPES.map((role) => ({
-    value: role,
-    label: role.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+  const adminRoleOptions = adminRoles.map((role) => ({
+    value: role.name,
+    label: role.displayName,
   }));
 
   return (

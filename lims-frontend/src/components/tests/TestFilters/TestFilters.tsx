@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/common/Button/Button';
 import {
   Select,
@@ -12,7 +12,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { X } from 'lucide-react';
 import { TestCategory } from '@/types/test.types';
-import { TEST_ADMIN_TYPES } from '@/types/user.types';
+import { AdminRole } from '@/types/admin-role.types';
+import { adminRolesService } from '@/services/api/admin-roles.service';
 
 interface TestFiltersProps {
   categoryFilter?: TestCategory;
@@ -33,14 +34,28 @@ export const TestFilters: React.FC<TestFiltersProps> = ({
   onIsActiveFilterChange,
   onReset,
 }) => {
+  const [adminRoles, setAdminRoles] = useState<AdminRole[]>([]);
+
+  useEffect(() => {
+    const fetchAdminRoles = async () => {
+      try {
+        const roles = await adminRolesService.getAdminRoles();
+        setAdminRoles(roles);
+      } catch (error) {
+        console.error('Failed to fetch admin roles:', error);
+      }
+    };
+    fetchAdminRoles();
+  }, []);
+
   const categoryOptions = [
     { value: TestCategory.ON_SITE, label: 'On Site' },
     { value: TestCategory.LAB, label: 'Lab' },
   ];
 
-  const adminRoleOptions = TEST_ADMIN_TYPES.map((role) => ({
-    value: role,
-    label: role.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+  const adminRoleOptions = adminRoles.map((role) => ({
+    value: role.name,
+    label: role.displayName,
   }));
 
   const statusOptions = [
@@ -112,8 +127,8 @@ export const TestFilters: React.FC<TestFiltersProps> = ({
             isActiveFilter === undefined
               ? 'all'
               : isActiveFilter === true
-              ? 'true'
-              : 'false'
+                ? 'true'
+                : 'false'
           }
           onValueChange={(value) =>
             onIsActiveFilterChange(

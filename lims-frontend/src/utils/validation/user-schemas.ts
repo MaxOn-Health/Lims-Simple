@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UserRole, TEST_ADMIN_TYPES } from '@/types/user.types';
+import { UserRole } from '@/types/user.types';
 
 export const createUserSchema = z
   .object({
@@ -13,7 +13,7 @@ export const createUserSchema = z
       .regex(/[0-9]/, 'Password must contain at least one number')
       .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
     role: z.nativeEnum(UserRole),
-    testTechnicianType: z.enum(TEST_ADMIN_TYPES as [string, ...string[]]).optional().nullable(),
+    testTechnicianType: z.string().min(1, 'Test Technician Type is required').optional().nullable(),
     isActive: z.boolean().default(true),
   })
   .refine(
@@ -34,7 +34,7 @@ export const updateUserSchema = z
     fullName: z.string().min(1, 'Full name is required').max(255).optional(),
     email: z.string().email('Invalid email address').optional(),
     role: z.nativeEnum(UserRole).optional(),
-    testTechnicianType: z.enum(TEST_ADMIN_TYPES as [string, ...string[]]).optional().nullable(),
+    testTechnicianType: z.string().min(1).optional().nullable(),
     isActive: z.boolean().optional(),
   })
   .refine(

@@ -2,8 +2,12 @@ import {
   registerDecorator,
   ValidationOptions,
 } from 'class-validator';
-import { isValidTestAdminType } from '../constants/test-admin-types';
 
+/**
+ * Validates that the admin role is a valid format.
+ * Actual existence check is done at the service layer against the database.
+ * Format: lowercase, starts with letter, contains only letters, numbers, and underscores
+ */
 export function IsValidTestAdminType(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({
@@ -13,13 +17,14 @@ export function IsValidTestAdminType(validationOptions?: ValidationOptions) {
       options: validationOptions,
       validator: {
         validate(value: any) {
-          if (typeof value !== 'string') {
+          if (typeof value !== 'string' || value.length === 0) {
             return false;
           }
-          return isValidTestAdminType(value);
+          // Validate format: lowercase, starts with letter, alphanumeric + underscores
+          return /^[a-z][a-z0-9_]*$/.test(value);
         },
         defaultMessage() {
-          return 'Invalid test technician type. Allowed values: audiometry, xray, eye_test, pft, ecg';
+          return 'Invalid admin role format. Must be lowercase, start with a letter, and contain only letters, numbers, and underscores.';
         },
       },
     });

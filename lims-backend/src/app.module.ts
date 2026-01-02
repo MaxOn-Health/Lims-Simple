@@ -22,6 +22,7 @@ import { DoctorReviewsModule } from './modules/doctor-reviews/doctor-reviews.mod
 import { ReportsModule } from './modules/reports/reports.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { AdminRolesModule } from './modules/admin-roles/admin-roles.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { JwtTokenService } from './common/services/jwt.service';
 import { PasswordService } from './common/services/password.service';
@@ -108,6 +109,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     ReportsModule,
     ProjectsModule,
     DashboardModule,
+    AdminRolesModule,
   ],
   controllers: [HealthController],
   providers: [

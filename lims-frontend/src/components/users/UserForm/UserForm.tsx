@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -10,10 +10,12 @@ import {
   CreateUserFormData,
   UpdateUserFormData,
 } from '@/utils/validation/user-schemas';
-import { User, UserRole, TEST_ADMIN_TYPES } from '@/types/user.types';
+import { User, UserRole } from '@/types/user.types';
+import { AdminRole } from '@/types/admin-role.types';
 import { Input } from '@/components/common/Input/Input';
 import { Button } from '@/components/common/Button/Button';
 import { usersService } from '@/services/api/users.service';
+import { adminRolesService } from '@/services/api/admin-roles.service';
 import { useUIStore } from '@/store/ui.store';
 import { getErrorMessage } from '@/utils/error-handler';
 import { ApiError } from '@/types/api.types';
@@ -37,6 +39,23 @@ export const UserForm: React.FC<UserFormProps> = ({
   const isEditMode = mode === 'edit' && !!user;
   const canManageRoles = isSuperAdmin(currentUser);
 
+  const [adminRoles, setAdminRoles] = useState<AdminRole[]>([]);
+  const [isLoadingRoles, setIsLoadingRoles] = useState(true);
+
+  useEffect(() => {
+    const fetchAdminRoles = async () => {
+      try {
+        const roles = await adminRolesService.getAdminRoles();
+        setAdminRoles(roles);
+      } catch (error) {
+        console.error('Failed to fetch admin roles:', error);
+      } finally {
+        setIsLoadingRoles(false);
+      }
+    };
+    fetchAdminRoles();
+  }, []);
+
   const schema = isEditMode ? updateUserSchema : createUserSchema;
 
   const {
@@ -49,15 +68,15 @@ export const UserForm: React.FC<UserFormProps> = ({
     resolver: zodResolver(schema),
     defaultValues: isEditMode
       ? {
-          fullName: user.fullName,
-          email: user.email,
-          role: user.role,
-          testTechnicianType: user.testTechnicianType || undefined,
-          isActive: user.isActive,
-        }
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        testTechnicianType: user.testTechnicianType || undefined,
+        isActive: user.isActive,
+      }
       : {
-          isActive: true,
-        },
+        isActive: true,
+      },
   });
 
   const selectedRole = watch('role');
@@ -94,9 +113,9 @@ export const UserForm: React.FC<UserFormProps> = ({
     }
   };
 
-  const testAdminTypeOptions = TEST_ADMIN_TYPES.map((type) => ({
-    value: type,
-    label: type.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+  const testAdminTypeOptions = adminRoles.map((role) => ({
+    value: role.name,
+    label: role.displayName,
   }));
 
   const roleOptions = Object.values(UserRole).map((role) => ({

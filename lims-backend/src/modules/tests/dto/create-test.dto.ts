@@ -54,36 +54,6 @@ export class CreateTestDto {
   @IsValidTestAdminType({ message: 'Invalid admin role specified' })
   adminRole: string;
 
-  @ApiPropertyOptional({
-    description: 'Normal range minimum value',
-    example: 4.5,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Normal range min must have at most 2 decimal places' })
-  normalRangeMin?: number;
-
-  @ApiPropertyOptional({
-    description: 'Normal range maximum value',
-    example: 11.0,
-  })
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Normal range max must have at most 2 decimal places' })
-  @ValidateIf((o) => o.normalRangeMin !== undefined && o.normalRangeMax !== undefined)
-  @Min(0, { message: 'Normal range max must be greater than min' })
-  normalRangeMax?: number;
-
-  @ApiPropertyOptional({
-    description: 'Unit of measurement',
-    example: 'g/dL',
-    maxLength: 50,
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(50, { message: 'Unit must not exceed 50 characters' })
-  unit?: string;
-
   @ApiProperty({
     description: 'Test fields definition',
     type: [TestFieldDto],

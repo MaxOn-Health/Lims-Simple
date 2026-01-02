@@ -31,9 +31,6 @@ describe('TestsService', () => {
     description: 'Test description',
     category: TestCategory.LAB,
     adminRole: 'audiometry',
-    normalRangeMin: 4.5,
-    normalRangeMax: 11.0,
-    unit: 'g/dL',
     testFields: mockTestFields,
     isActive: true,
     packageTests: [],
@@ -89,9 +86,6 @@ describe('TestsService', () => {
       description: 'New description',
       category: TestCategory.ON_SITE,
       adminRole: 'xray',
-      normalRangeMin: 5.0,
-      normalRangeMax: 10.0,
-      unit: 'mg/dL',
       testFields: mockTestFields,
     };
 
@@ -111,13 +105,6 @@ describe('TestsService', () => {
       jest.spyOn(testsRepository, 'findOne').mockResolvedValue(mockTest);
 
       await expect(service.create(createDto)).rejects.toThrow(ConflictException);
-    });
-
-    it('should throw BadRequestException if normal range min >= max', async () => {
-      const invalidDto = { ...createDto, normalRangeMin: 10.0, normalRangeMax: 5.0 };
-      jest.spyOn(testsRepository, 'findOne').mockResolvedValue(null);
-
-      await expect(service.create(invalidDto)).rejects.toThrow(BadRequestException);
     });
   });
 

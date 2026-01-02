@@ -35,15 +35,15 @@ describe('ResultsService', () => {
     description: 'Test',
     category: 'lab' as any,
     adminRole: 'lab_technician',
-    normalRangeMin: 5.0,
-    normalRangeMax: 15.0,
-    unit: 'mg/dL',
     testFields: [
       {
         field_name: 'result_value',
         field_type: TestFieldType.NUMBER,
         required: true,
         options: null,
+        normalRangeMin: 5.0,
+        normalRangeMax: 15.0,
+        unit: 'mg/dL',
       },
     ] as TestField[],
     isActive: true,

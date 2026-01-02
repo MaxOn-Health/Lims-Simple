@@ -44,15 +44,6 @@ export class Test {
   @Index()
   adminRole: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, name: 'normal_range_min' })
-  normalRangeMin: number | null;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true, name: 'normal_range_max' })
-  normalRangeMax: number | null;
-
-  @Column({ type: 'varchar', length: 50, nullable: true })
-  unit: string | null;
-
   @Column({ type: 'jsonb', name: 'test_fields' })
   testFields: TestField[];
 

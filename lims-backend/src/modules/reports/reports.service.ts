@@ -200,21 +200,21 @@ export class ReportsService {
       const result = results.find((r) => r.assignmentId === assignment.id);
       const test = assignment.test;
 
+      // Get range info from first numeric field if available
+      const numericField = test.testFields?.find(
+        (f: any) => f.field_type === 'number' && (f.normalRangeMin !== null || f.normalRangeMax !== null)
+      );
+
       return {
         testName: test.name,
         resultValues: result?.resultValues || {},
-        normalRange:
-          test.normalRangeMin !== null || test.normalRangeMax !== null
-            ? {
-              min: test.normalRangeMin
-                ? parseFloat(test.normalRangeMin.toString())
-                : undefined,
-              max: test.normalRangeMax
-                ? parseFloat(test.normalRangeMax.toString())
-                : undefined,
-              unit: test.unit || undefined,
-            }
-            : undefined,
+        normalRange: numericField
+          ? {
+            min: numericField.normalRangeMin ?? undefined,
+            max: numericField.normalRangeMax ?? undefined,
+            unit: numericField.unit || undefined,
+          }
+          : undefined,
         status: this.determineStatus(result, test),
         notes: result?.notes || undefined,
       };
@@ -262,19 +262,21 @@ export class ReportsService {
     result: TestResult | undefined,
     test: any,
   ): string | undefined {
-    if (!result || !test.normalRangeMin || !test.normalRangeMax) {
+    if (!result) {
       return undefined;
     }
 
-    // Check if any numeric value in resultValues is outside normal range
-    const min = parseFloat(test.normalRangeMin.toString());
-    const max = parseFloat(test.normalRangeMax.toString());
-
-    for (const [key, value] of Object.entries(result.resultValues)) {
-      const numValue = parseFloat(String(value));
-      if (!isNaN(numValue)) {
-        if (numValue < min || numValue > max) {
-          return 'Abnormal';
+    // Check each numeric field's range
+    for (const field of (test.testFields || [])) {
+      if (field.field_type === 'number' && field.normalRangeMin !== null && field.normalRangeMax !== null) {
+        const value = result.resultValues?.[field.field_name];
+        if (value !== undefined && value !== null) {
+          const numValue = parseFloat(String(value));
+          if (!isNaN(numValue)) {
+            if (numValue < field.normalRangeMin || numValue > field.normalRangeMax) {
+              return 'Abnormal';
+            }
+          }
         }
       }
     }

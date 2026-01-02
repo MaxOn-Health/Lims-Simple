@@ -47,18 +47,15 @@ export const TestForm: React.FC<TestFormProps> = ({
     resolver: zodResolver(schema),
     defaultValues: isEditMode
       ? {
-          name: test.name,
-          description: test.description || undefined,
-          category: test.category,
-          adminRole: test.adminRole,
-          normalRangeMin: test.normalRangeMin || undefined,
-          normalRangeMax: test.normalRangeMax || undefined,
-          unit: test.unit || undefined,
-          testFields: test.testFields || [],
-        }
+        name: test.name,
+        description: test.description || undefined,
+        category: test.category,
+        adminRole: test.adminRole,
+        testFields: test.testFields || [],
+      }
       : {
-          testFields: [],
-        },
+        testFields: [],
+      },
   });
 
   const onSubmit = async (data: CreateTestFormData | UpdateTestFormData) => {
@@ -197,46 +194,6 @@ export const TestForm: React.FC<TestFormProps> = ({
                 <p className="mt-1 text-sm text-red-600">{errors.adminRole.message}</p>
               )}
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-b border-gray-200 pb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Normal Range</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <Input
-              id="normalRangeMin"
-              type="number"
-              step="0.01"
-              label="Min Value"
-              placeholder="Enter minimum value"
-              error={errors.normalRangeMin?.message}
-              {...register('normalRangeMin', { valueAsNumber: true })}
-            />
-          </div>
-
-          <div>
-            <Input
-              id="normalRangeMax"
-              type="number"
-              step="0.01"
-              label="Max Value"
-              placeholder="Enter maximum value"
-              error={errors.normalRangeMax?.message}
-              {...register('normalRangeMax', { valueAsNumber: true })}
-            />
-          </div>
-
-          <div>
-            <Input
-              id="unit"
-              label="Unit"
-              placeholder="e.g., g/dL, mg/L"
-              error={errors.unit?.message}
-              {...register('unit')}
-            />
           </div>
         </div>
       </div>

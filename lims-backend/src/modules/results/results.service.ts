@@ -76,8 +76,8 @@ export class ResultsService {
     const validation = this.resultValidationService.validateResultValues(
       assignment.test.testFields,
       dto.resultValues,
-      assignment.test.normalRangeMin,
-      assignment.test.normalRangeMax,
+      null,
+      null,
     );
 
     if (!validation.isValid) {
@@ -223,8 +223,8 @@ export class ResultsService {
       const validation = this.resultValidationService.validateResultValues(
         result.assignment.test.testFields,
         dto.resultValues,
-        result.assignment.test.normalRangeMin,
-        result.assignment.test.normalRangeMax,
+        null,
+        null,
       );
 
       if (!validation.isValid) {

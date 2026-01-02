@@ -29,23 +29,11 @@ export class TestsService {
       throw new ConflictException('Test name already exists');
     }
 
-    // Validate normal range
-    if (
-      createTestDto.normalRangeMin !== undefined &&
-      createTestDto.normalRangeMax !== undefined &&
-      createTestDto.normalRangeMin >= createTestDto.normalRangeMax
-    ) {
-      throw new BadRequestException('Normal range min must be less than max');
-    }
-
     const test = this.testsRepository.create({
       name: createTestDto.name,
       description: createTestDto.description || null,
       category: createTestDto.category,
       adminRole: createTestDto.adminRole,
-      normalRangeMin: createTestDto.normalRangeMin || null,
-      normalRangeMax: createTestDto.normalRangeMax || null,
-      unit: createTestDto.unit || null,
       testFields: createTestDto.testFields,
       isActive: true,
     });
@@ -100,38 +88,6 @@ export class TestsService {
       });
       if (existingTest) {
         throw new ConflictException('Test name already exists');
-      }
-    }
-
-    // Validate normal range if both are provided
-    const normalRangeMin = updateTestDto.normalRangeMin !== undefined
-      ? updateTestDto.normalRangeMin
-      : test.normalRangeMin;
-    const normalRangeMax = updateTestDto.normalRangeMax !== undefined
-      ? updateTestDto.normalRangeMax
-      : test.normalRangeMax;
-
-    if (
-      normalRangeMin !== null &&
-      normalRangeMax !== null &&
-      normalRangeMin >= normalRangeMax
-    ) {
-      throw new BadRequestException('Normal range min must be less than max');
-    }
-
-    // Check if test is used in any package
-    const packageTests = await this.packageTestsRepository.find({
-      where: { testId: id },
-    });
-
-    if (packageTests.length > 0) {
-      // If critical fields are changed, prevent update
-      if (
-        updateTestDto.normalRangeMin !== undefined ||
-        updateTestDto.normalRangeMax !== undefined ||
-        updateTestDto.unit !== undefined
-      ) {
-        throw new BadRequestException('Cannot update critical fields of a test that is used in packages');
       }
     }
 

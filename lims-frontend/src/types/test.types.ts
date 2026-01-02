@@ -28,9 +28,6 @@ export interface Test {
   description: string | null;
   category: TestCategory;
   adminRole: string;
-  normalRangeMin: number | null;
-  normalRangeMax: number | null;
-  unit: string | null;
   testFields: TestField[];
   isActive: boolean;
   createdAt: Date;
@@ -42,9 +39,6 @@ export interface CreateTestRequest {
   description?: string;
   category: TestCategory;
   adminRole: string;
-  normalRangeMin?: number;
-  normalRangeMax?: number;
-  unit?: string;
   testFields: TestField[];
 }
 
@@ -53,9 +47,6 @@ export interface UpdateTestRequest {
   description?: string;
   category?: TestCategory;
   adminRole?: string;
-  normalRangeMin?: number;
-  normalRangeMax?: number;
-  unit?: string;
   testFields?: TestField[];
   isActive?: boolean;
 }

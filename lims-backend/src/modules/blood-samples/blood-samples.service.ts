@@ -417,8 +417,8 @@ export class BloodSamplesService {
     const validation = this.resultValidationService.validateResultValues(
       assignment.test.testFields,
       dto.resultValues,
-      assignment.test.normalRangeMin,
-      assignment.test.normalRangeMax,
+      null,
+      null,
     );
 
     if (!validation.isValid) {

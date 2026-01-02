@@ -60,40 +60,10 @@ export const createTestSchema = z.object({
     errorMap: () => ({ message: 'Please select a valid category' }),
   }),
   adminRole: z.string().min(1, 'Admin role is required'),
-  normalRangeMin: z
-    .number({
-      invalid_type_error: 'Normal range min must be a number',
-    })
-    .refine((val) => {
-      const decimalPlaces = (val.toString().split('.')[1] || '').length;
-      return decimalPlaces <= 2;
-    }, 'Normal range min must have at most 2 decimal places')
-    .optional(),
-  normalRangeMax: z
-    .number({
-      invalid_type_error: 'Normal range max must be a number',
-    })
-    .refine((val) => {
-      const decimalPlaces = (val.toString().split('.')[1] || '').length;
-      return decimalPlaces <= 2;
-    }, 'Normal range max must have at most 2 decimal places')
-    .optional(),
-  unit: z.string().max(50, 'Unit must not exceed 50 characters').optional(),
   testFields: z
     .array(testFieldSchema)
     .min(1, 'At least one test field is required'),
-}).refine(
-  (data) => {
-    if (data.normalRangeMin !== undefined && data.normalRangeMax !== undefined) {
-      return data.normalRangeMax >= data.normalRangeMin;
-    }
-    return true;
-  },
-  {
-    message: 'Normal range max must be greater than or equal to min',
-    path: ['normalRangeMax'],
-  }
-);
+});
 
 export const updateTestSchema = z.object({
   name: z.string().min(1, 'Test name is required').max(255, 'Name must not exceed 255 characters').optional(),
@@ -102,39 +72,9 @@ export const updateTestSchema = z.object({
     errorMap: () => ({ message: 'Please select a valid category' }),
   }).optional(),
   adminRole: z.string().min(1, 'Admin role is required').optional(),
-  normalRangeMin: z
-    .number({
-      invalid_type_error: 'Normal range min must be a number',
-    })
-    .refine((val) => {
-      const decimalPlaces = (val.toString().split('.')[1] || '').length;
-      return decimalPlaces <= 2;
-    }, 'Normal range min must have at most 2 decimal places')
-    .optional(),
-  normalRangeMax: z
-    .number({
-      invalid_type_error: 'Normal range max must be a number',
-    })
-    .refine((val) => {
-      const decimalPlaces = (val.toString().split('.')[1] || '').length;
-      return decimalPlaces <= 2;
-    }, 'Normal range max must have at most 2 decimal places')
-    .optional(),
-  unit: z.string().max(50, 'Unit must not exceed 50 characters').optional(),
   testFields: z.array(testFieldSchema).optional(),
   isActive: z.boolean().optional(),
-}).refine(
-  (data) => {
-    if (data.normalRangeMin !== undefined && data.normalRangeMax !== undefined) {
-      return data.normalRangeMax >= data.normalRangeMin;
-    }
-    return true;
-  },
-  {
-    message: 'Normal range max must be greater than or equal to min',
-    path: ['normalRangeMax'],
-  }
-);
+});
 
 export type CreateTestFormData = z.infer<typeof createTestSchema>;
 export type UpdateTestFormData = z.infer<typeof updateTestSchema>;

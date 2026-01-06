@@ -18,6 +18,8 @@ import {
   TrendingUp,
   ArrowRight
 } from 'lucide-react';
+import { UserRole } from '@/types/user.types';
+import { MyAssignmentsDashboard } from '@/components/assignments/MyAssignmentsDashboard/MyAssignmentsDashboard';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -44,6 +46,17 @@ export default function DashboardPage() {
       fetchStats();
     }
   }, [selectedProjectId, projectsLoading]);
+
+  // If user is a technician or doctor who primarily deals with assignments, show that dashboard
+  if (user && (user.role === UserRole.TEST_TECHNICIAN || user.role === UserRole.LAB_TECHNICIAN)) {
+    return (
+      <ProtectedRoute>
+        <MainLayout>
+          <MyAssignmentsDashboard />
+        </MainLayout>
+      </ProtectedRoute>
+    );
+  }
 
   const statCards = data ? [
     {

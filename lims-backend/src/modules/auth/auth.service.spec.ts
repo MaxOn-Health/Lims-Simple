@@ -22,6 +22,7 @@ describe('AuthService', () => {
     role: UserRole.SUPER_ADMIN,
     testTechnicianType: null,
     isActive: true,
+    pinHash: null,
     passkeyCredentialId: null,
     passkeyPublicKey: null,
     createdAt: new Date(),

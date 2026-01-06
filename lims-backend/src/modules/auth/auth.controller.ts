@@ -235,5 +235,32 @@ export class AuthController {
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> {
     return this.authService.resetPassword(resetPasswordDto.token, resetPasswordDto.newPassword);
   }
+
+  @Post('setup-pin')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Set up 4-digit PIN for transactions' })
+  @ApiResponse({ status: 200, description: 'PIN set successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid PIN format' })
+  async setupPin(
+    @Body() body: { pin: string },
+    @CurrentUser() user: JwtPayload,
+  ): Promise<{ message: string }> {
+    return this.authService.setupPin(user.userId, body.pin);
+  }
+
+  @Post('verify-pin')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify PIN before sensitive actions' })
+  @ApiResponse({ status: 200, description: 'PIN verification result', schema: { type: 'object', properties: { verified: { type: 'boolean' } } } })
+  async verifyPin(
+    @Body() body: { pin: string },
+    @CurrentUser() user: JwtPayload,
+  ): Promise<{ verified: boolean }> {
+    return this.authService.verifyPin(user.userId, body.pin);
+  }
 }
 

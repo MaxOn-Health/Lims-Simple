@@ -215,5 +215,26 @@ export class AuthService {
 
     return { message: 'Password has been reset successfully' };
   }
+
+  async setupPin(userId: string, pin: string): Promise<{ message: string }> {
+    if (!/^\d{4}$/.test(pin)) {
+      throw new BadRequestException('PIN must be exactly 4 digits');
+    }
+
+    const pinHash = await this.passwordService.hashPassword(pin);
+    await this.usersService.updatePin(userId, pinHash);
+
+    return { message: 'PIN set successfully' };
+  }
+
+  async verifyPin(userId: string, pin: string): Promise<{ verified: boolean }> {
+    const user = await this.usersService.findById(userId);
+    if (!user || !user.pinHash) {
+      return { verified: false };
+    }
+
+    const isValid = await this.passwordService.comparePassword(pin, user.pinHash);
+    return { verified: isValid };
+  }
 }
 

@@ -152,6 +152,16 @@ export class AssignmentsService {
       );
     }
 
+    // Reload all created assignments with relations
+    if (createdAssignments.length > 0) {
+      const assignmentIds = createdAssignments.map(a => a.id);
+      const reloadedAssignments = await this.assignmentsRepository.find({
+        where: { id: In(assignmentIds) },
+        relations: ['patient', 'test', 'admin', 'assignedByUser'],
+      });
+      return this.mapToResponseDtos(reloadedAssignments);
+    }
+
     return this.mapToResponseDtos(createdAssignments);
   }
 
@@ -284,8 +294,8 @@ export class AssignmentsService {
         throw new NotFoundException(`Admin with ID ${dto.adminId} not found or not active`);
       }
 
-      if (admin.role !== UserRole.TEST_TECHNICIAN) {
-        throw new BadRequestException('User is not a TEST_TECHNICIAN');
+      if (admin.role !== UserRole.TEST_TECHNICIAN && admin.role !== UserRole.LAB_TECHNICIAN) {
+        throw new BadRequestException('User is not a TEST_TECHNICIAN or LAB_TECHNICIAN');
       }
 
       if (admin.testTechnicianType !== test.adminRole) {
@@ -324,6 +334,12 @@ export class AssignmentsService {
       assignment = await this.assignmentsRepository.save(assignment);
     }
 
+    // Reload with relations to populate admin, patient, test for response
+    const savedAssignment = await this.assignmentsRepository.findOne({
+      where: { id: assignment.id },
+      relations: ['patient', 'test', 'admin', 'assignedByUser'],
+    });
+
     // Log audit
     await this.auditService.log(
       assignedByUserId,
@@ -339,7 +355,7 @@ export class AssignmentsService {
       },
     );
 
-    return this.mapToResponseDto(assignment);
+    return this.mapToResponseDto(savedAssignment!);
   }
 
   async reassign(
@@ -366,8 +382,8 @@ export class AssignmentsService {
       throw new NotFoundException(`Admin with ID ${dto.adminId} not found or not active`);
     }
 
-    if (admin.role !== UserRole.TEST_TECHNICIAN) {
-      throw new BadRequestException('User is not a TEST_TECHNICIAN');
+    if (admin.role !== UserRole.TEST_TECHNICIAN && admin.role !== UserRole.LAB_TECHNICIAN) {
+      throw new BadRequestException('User is not a TEST_TECHNICIAN or LAB_TECHNICIAN');
     }
 
     if (admin.testTechnicianType !== assignment.test.adminRole) {
@@ -386,6 +402,12 @@ export class AssignmentsService {
 
     const updatedAssignment = await this.assignmentsRepository.save(assignment);
 
+    // Reload with relations to populate admin, patient, test for response
+    const reloadedAssignment = await this.assignmentsRepository.findOne({
+      where: { id: updatedAssignment.id },
+      relations: ['patient', 'test', 'admin', 'assignedByUser'],
+    });
+
     // Log audit
     await this.auditService.log(
       assignedByUserId,
@@ -400,7 +422,7 @@ export class AssignmentsService {
       },
     );
 
-    return this.mapToResponseDto(updatedAssignment);
+    return this.mapToResponseDto(reloadedAssignment!);
   }
 
   async updateStatus(
@@ -510,6 +532,21 @@ export class AssignmentsService {
       .where('assignment.adminId = :adminId', { adminId })
       .orderBy('assignment.createdAt', 'DESC');
 
+    // If query is for basic list (no status filter), also include unassigned tasks for this admin's type
+    if (!status && currentUser && (currentUser.role === UserRole.TEST_TECHNICIAN || currentUser.role === UserRole.LAB_TECHNICIAN)) {
+      const user = await this.usersRepository.findOne({ where: { id: adminId } });
+      if (user && user.testTechnicianType) {
+        // Add OR condition: (adminId IS NULL AND test.adminRole = user.testTechnicianType)
+        qb.orWhere(
+          '(assignment.adminId IS NULL AND assignment.status = :pendingStatus AND test.adminRole = :techType)',
+          {
+            pendingStatus: AssignmentStatus.PENDING,
+            techType: user.testTechnicianType,
+          }
+        );
+      }
+    }
+
     if (status) {
       qb.andWhere('assignment.status = :status', { status });
     }
@@ -527,6 +564,55 @@ export class AssignmentsService {
 
     const assignments = await qb.getMany();
     return this.mapToResponseDtos(assignments);
+  }
+
+  async claimAssignment(assignmentId: string, userId: string): Promise<AssignmentResponseDto> {
+    const assignment = await this.assignmentsRepository.findOne({
+      where: { id: assignmentId },
+      relations: ['test'],
+    });
+
+    if (!assignment) {
+      throw new NotFoundException(`Assignment with ID ${assignmentId} not found`);
+    }
+
+    if (assignment.adminId) {
+      throw new BadRequestException('Assignment is already assigned');
+    }
+
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (
+      (user.role !== UserRole.TEST_TECHNICIAN && user.role !== UserRole.LAB_TECHNICIAN) ||
+      user.testTechnicianType !== assignment.test.adminRole
+    ) {
+      throw new ForbiddenException('You are not authorized to claim this assignment');
+    }
+
+    assignment.adminId = userId;
+    assignment.status = AssignmentStatus.ASSIGNED;
+    assignment.assignedAt = new Date();
+
+    // If not manually assigned by a receptionist, we can say assigned by self or system
+    // assignment.assignedBy = userId; // Optional: track who claimed it?
+
+    const savedAssignment = await this.assignmentsRepository.save(assignment);
+
+    // Reload with relations
+    const reloadedAssignment = await this.assignmentsRepository.findOne({
+      where: { id: savedAssignment.id },
+      relations: ['patient', 'test', 'admin', 'assignedByUser'],
+    });
+
+    await this.auditService.log(userId, 'ASSIGNMENT_CLAIMED', 'Assignment', assignment.id, {
+      patientId: assignment.patientId,
+      testId: assignment.testId,
+    });
+
+    return this.mapToResponseDto(reloadedAssignment!);
   }
 
   async findById(id: string): Promise<AssignmentResponseDto> {
@@ -638,7 +724,7 @@ export class AssignmentsService {
     // Query for technicians
     const queryBuilder = this.usersRepository
       .createQueryBuilder('user')
-      .where('user.role = :role', { role: UserRole.TEST_TECHNICIAN })
+      .where('user.role IN (:...roles)', { roles: [UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN] })
       .andWhere('user.isActive = :isActive', { isActive: true })
       .andWhere('user.testTechnicianType = :adminRole', { adminRole });
 

@@ -100,6 +100,7 @@ describe('AssignmentsService', () => {
     role: UserRole.TEST_TECHNICIAN,
     testTechnicianType: 'audiometry',
     isActive: true,
+    pinHash: null,
     passkeyCredentialId: null,
     passkeyPublicKey: null,
     createdAt: new Date(),

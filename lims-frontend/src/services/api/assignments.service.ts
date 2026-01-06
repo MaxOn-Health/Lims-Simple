@@ -38,6 +38,12 @@ export const assignmentsService = {
     return response.data;
   },
 
+
+  async claimAssignment(assignmentId: string): Promise<Assignment> {
+    const response = await apiClient.put<Assignment>(`/assignments/${assignmentId}/claim`);
+    return response.data;
+  },
+
   async getAssignmentsByPatient(patientId: string): Promise<Assignment[]> {
     const response = await apiClient.get<Assignment[]>(`/assignments/patient/${patientId}`);
     return response.data;

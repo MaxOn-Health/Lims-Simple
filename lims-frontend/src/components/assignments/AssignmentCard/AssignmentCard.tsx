@@ -16,6 +16,7 @@ interface AssignmentCardProps {
   onStart?: (assignmentId: string) => void;
   onComplete?: (assignmentId: string) => void;
   onUpdateStatus?: (assignmentId: string) => void;
+  onClaim?: (assignmentId: string) => void;
 }
 
 export const AssignmentCard: React.FC<AssignmentCardProps> = ({
@@ -23,6 +24,7 @@ export const AssignmentCard: React.FC<AssignmentCardProps> = ({
   onStart,
   onComplete,
   onUpdateStatus,
+  onClaim,
 }) => {
   const router = useRouter();
 
@@ -150,6 +152,18 @@ export const AssignmentCard: React.FC<AssignmentCardProps> = ({
               >
                 <Play className="h-3.5 w-3.5 shrink-0" />
                 <span>Start</span>
+              </Button>
+            )}
+
+            {!assignment.adminId && onClaim && (
+              <Button
+                variant="primary" // High visibility for unassigned tasks
+                size="sm"
+                onClick={() => onClaim(assignment.id)}
+                className="flex-1 gap-1.5 h-9 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <UserCog className="h-3.5 w-3.5 shrink-0" />
+                <span>Claim</span>
               </Button>
             )}
           </div>

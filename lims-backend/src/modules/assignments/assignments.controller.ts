@@ -242,6 +242,25 @@ export class AssignmentsController {
     return this.assignmentsService.updateStatus(id, updateStatusDto, user.userId);
   }
 
+  @Put(':id/claim')
+  @Roles(UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN)
+  @ApiOperation({ summary: 'Claim an unassigned task (TEST_TECHNICIAN, LAB_TECHNICIAN only)' })
+  @ApiParam({ name: 'id', description: 'Assignment UUID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Assignment claimed successfully',
+    type: AssignmentResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Assignment already assigned' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Invalid role or specialization' })
+  @ApiResponse({ status: 404, description: 'Assignment not found' })
+  async claimAssignment(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<AssignmentResponseDto> {
+    return this.assignmentsService.claimAssignment(id, user.userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get assignment by ID (All authenticated users)' })
   @ApiParam({ name: 'id', description: 'Assignment UUID' })

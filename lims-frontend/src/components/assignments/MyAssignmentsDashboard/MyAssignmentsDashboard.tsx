@@ -43,19 +43,22 @@ export const MyAssignmentsDashboard: React.FC = () => {
 
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  const fetchAssignments = async (status?: AssignmentStatus | 'completed') => {
+  const fetchAssignments = async (status?: AssignmentStatus | 'completed' | 'available') => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Handle special case for "completed" tab - fetch all assignments and filter client-side
+      let data: Assignment[] = [];
       if (status === 'completed') {
-        const allData = await assignmentsService.getMyAssignments(undefined, selectedProjectId || undefined);
-        setAssignments(allData);
+        data = await assignmentsService.getMyAssignments(undefined, selectedProjectId || undefined);
+      } else if (status === 'available') {
+        // When 'available' is selected, we fetch all (including unassigned) and filter client-side for adminId=null
+        // The backend 'getMyAssignments' (findByAdmin) already returns unassigned pool tasks when no status is passed.
+        data = await assignmentsService.getMyAssignments(undefined, selectedProjectId || undefined);
       } else {
-        const data = await assignmentsService.getMyAssignments(status, selectedProjectId || undefined);
-        setAssignments(data);
+        data = await assignmentsService.getMyAssignments(status, selectedProjectId || undefined);
       }
+      setAssignments(data);
     } catch (err) {
       const apiError = err as ApiError;
       setError(getErrorMessage(apiError));
@@ -74,21 +77,45 @@ export const MyAssignmentsDashboard: React.FC = () => {
         ? undefined
         : selectedStatus === 'completed'
           ? 'completed'
-          : (selectedStatus as AssignmentStatus);
+          : selectedStatus === 'available'
+            ? 'available'
+            : (selectedStatus as AssignmentStatus);
     fetchAssignments(status);
   }, [selectedStatus, selectedProjectId]);
+
+  const handleClaim = async (assignmentId: string) => {
+    setIsLoading(true);
+    try {
+      await assignmentsService.claimAssignment(assignmentId);
+      addToast({ type: 'success', message: 'Task claimed successfully' });
+      // Refresh
+      fetchAssignments(selectedStatus as any);
+    } catch (err) {
+      addToast({ type: 'error', message: 'Failed to claim task' });
+      setIsLoading(false);
+    }
+  };
 
   // Filter assignments by search query and status tab
   const filteredAssignments = useMemo(() => {
     let filtered = assignments;
 
-    // Apply status filter for "completed" tab (show both COMPLETED and SUBMITTED)
-    if (selectedStatus === 'completed') {
+    if (selectedStatus === 'available') {
+      // Show only unassigned tasks
+      filtered = filtered.filter(a => !a.adminId);
+    } else if (selectedStatus === 'all') {
+      // Show only MY assigned tasks (exclude unassigned/available)
+      filtered = filtered.filter(a => !!a.adminId);
+    } else if (selectedStatus === 'completed') {
       filtered = filtered.filter(
         (assignment) =>
-          assignment.status === AssignmentStatus.COMPLETED ||
-          assignment.status === AssignmentStatus.SUBMITTED
+          (assignment.status === AssignmentStatus.COMPLETED ||
+            assignment.status === AssignmentStatus.SUBMITTED) &&
+          !!assignment.adminId
       );
+    } else {
+      // For specific status (assigned, in_progress), ensure it's mine
+      filtered = filtered.filter(a => !!a.adminId);
     }
 
     // Apply search query filter
@@ -288,8 +315,14 @@ export const MyAssignmentsDashboard: React.FC = () => {
         {/* Tabs for Status */}
         <Tabs value={selectedStatus} onValueChange={setSelectedStatus} className="w-full">
           <TabsList className="w-full justify-start h-12 bg-muted/50 p-1 gap-1 overflow-x-auto">
+            <TabsTrigger value="available" className="flex-1 min-w-[120px] data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm">
+              <span className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4" />
+                Available Pool
+              </span>
+            </TabsTrigger>
             <TabsTrigger value="all" className="flex-1 min-w-[80px] data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              All
+              My Tasks (All)
             </TabsTrigger>
             <TabsTrigger value={AssignmentStatus.ASSIGNED} className="flex-1 min-w-[100px] data-[state=active]:bg-white data-[state=active]:shadow-sm">
               To Start
@@ -317,18 +350,20 @@ export const MyAssignmentsDashboard: React.FC = () => {
                   </Card>
                 ))}
               </div>
-            ) : assignments.length === 0 ? (
+            ) : filteredAssignments.length === 0 ? (
               <div className="py-12">
                 <EmptyState
                   title="No tasks found"
                   message={
                     searchQuery
                       ? `No tasks found matching "${searchQuery}".`
-                      : selectedStatus === 'all'
-                        ? "You have no tasks assigned at the moment."
-                        : selectedStatus === 'completed'
-                          ? "You have no completed tasks yet."
-                          : `You have no ${selectedStatus.toLowerCase().replace('_', ' ')} tasks.`
+                      : selectedStatus === 'available'
+                        ? "No unassigned tasks available in your department pool at the moment."
+                        : selectedStatus === 'all'
+                          ? "You have no tasks assigned at the moment. Check the 'Available Pool' to claim new tasks."
+                          : selectedStatus === 'completed'
+                            ? "You have no completed tasks yet."
+                            : `You have no ${selectedStatus.toLowerCase().replace('_', ' ')} tasks.`
                   }
                 />
               </div>
@@ -341,6 +376,7 @@ export const MyAssignmentsDashboard: React.FC = () => {
                     onStart={handleStart}
                     onComplete={handleComplete}
                     onUpdateStatus={handleUpdateStatus}
+                    onClaim={handleClaim}
                   />
                 ))}
               </div>

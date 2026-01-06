@@ -155,5 +155,13 @@ export class UsersService {
 
     await this.usersRepository.update(id, { passwordHash });
   }
+
+  async updatePin(id: string, pinHash: string): Promise<void> {
+    const user = await this.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    await this.usersRepository.update(id, { pinHash });
+  }
 }
 

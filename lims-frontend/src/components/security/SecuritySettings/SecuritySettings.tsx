@@ -105,6 +105,22 @@ export const SecuritySettings: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Transaction Security */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            Transaction Security
+          </CardTitle>
+          <CardDescription>
+            Manage your secure transaction PIN for approving sensitive actions
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TransactionPinForm />
+        </CardContent>
+      </Card>
+
       {/* Security Best Practices */}
       <Card>
         <CardHeader>
@@ -143,10 +159,78 @@ export const SecuritySettings: React.FC = () => {
                 <p className="text-muted-foreground">Contact your administrator if you notice anything unusual</p>
               </div>
             </div>
+            <div className="flex items-start gap-2">
+              <span className="text-green-600 font-bold">✓</span>
+              <div>
+                <p className="font-medium">Set a Transaction PIN</p>
+                <p className="text-muted-foreground">Use a 4-digit PIN for extra security on critical actions</p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+// Internal component for PIN form to keep main file clean or we should extract it
+import { useState } from 'react';
+import { Button } from '@/components/common/Button/Button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useUIStore } from '@/store/ui.store';
+import { authService } from '@/services/api/auth.service';
+import { Loader2 } from 'lucide-react';
+
+const TransactionPinForm: React.FC = () => {
+  const { addToast } = useUIStore();
+  const [pin, setPin] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSetPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pin.length !== 4) return;
+
+    setIsLoading(true);
+    try {
+      await authService.setupPin(pin);
+      addToast({ type: 'success', message: 'Transaction PIN set successfully' });
+      setPin('');
+    } catch (error) {
+      // Error handling via interceptor or toast
+      addToast({ type: 'error', message: 'Failed to set PIN' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSetPin} className="max-w-sm space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="pin">New 4-Digit PIN</Label>
+        <div className="flex gap-2">
+          <Input
+            id="pin"
+            type="password"
+            maxLength={4}
+            value={pin}
+            onChange={(e) => {
+              const val = e.target.value.replace(/\D/g, '');
+              if (val.length <= 4) setPin(val);
+            }}
+            placeholder="••••"
+            className="tracking-widest"
+          />
+          <Button type="submit" disabled={pin.length !== 4 || isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Set PIN
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          This PIN will be required for sensitive actions like submitting results.
+        </p>
+      </div>
+    </form>
   );
 };
 

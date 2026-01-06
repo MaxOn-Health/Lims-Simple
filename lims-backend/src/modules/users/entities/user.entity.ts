@@ -51,6 +51,9 @@ export class User {
   @Column({ type: 'text', nullable: true, name: 'passkey_public_key' })
   passkeyPublicKey: string | null;
 
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'pin_hash' })
+  pinHash: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

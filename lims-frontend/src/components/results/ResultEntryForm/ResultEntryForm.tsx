@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { reportsService } from '@/services/api/reports.service';
 import { ResultSuccessModal } from '../ResultSuccessModal/ResultSuccessModal';
 import { ResultPreviewModal } from '../ResultPreviewModal/ResultPreviewModal';
+import { PinConfirmationModal } from '@/components/common/PinConfirmationModal/PinConfirmationModal';
 
 export const ResultEntryForm: React.FC = () => {
   const router = useRouter();
@@ -36,6 +37,8 @@ export const ResultEntryForm: React.FC = () => {
   const [generatedReportId, setGeneratedReportId] = useState<string | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pendingSubmissionData, setPendingSubmissionData] = useState<SubmitResultRequest | UpdateResultRequest | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -84,10 +87,19 @@ export const ResultEntryForm: React.FC = () => {
   }, [assignmentId]);
 
   const handleSubmit = async (data: SubmitResultRequest | UpdateResultRequest) => {
-    if (!assignment) {
+    // Store data and open PIN modal instead of submitting directly
+    setPendingSubmissionData(data);
+    setShowPinModal(true);
+  };
+
+  const handlePinSuccess = async () => {
+    setShowPinModal(false);
+    const data = pendingSubmissionData;
+
+    if (!assignment || !data) {
       addToast({
         type: 'error',
-        message: 'Assignment data is missing',
+        message: 'Submission data is missing',
       });
       return;
     }
@@ -318,6 +330,17 @@ export const ResultEntryForm: React.FC = () => {
           assignment={assignment}
         />
       )}
+
+      <PinConfirmationModal
+        isOpen={showPinModal}
+        onClose={() => setShowPinModal(false)}
+        onSuccess={handlePinSuccess}
+        title="Confirm Submission"
+        description="Please enter your 4-digit PIN to confirm these results."
+      />
     </div>
   );
 };
+
+// Add imports:
+// import { PinConfirmationModal } from '@/components/common/PinConfirmationModal/PinConfirmationModal';

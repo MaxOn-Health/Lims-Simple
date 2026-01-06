@@ -24,6 +24,7 @@ describe('UsersController', () => {
     role: UserRole.DOCTOR,
     testTechnicianType: null,
     isActive: true,
+    pinHash: null,
     passkeyCredentialId: null,
     passkeyPublicKey: null,
     createdAt: new Date(),

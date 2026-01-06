@@ -47,10 +47,10 @@ export class AdminSelectionService {
                 }
             }
 
-            // Get all active TEST_TECHNICIANS with matching type
+            // Get all active TEST_TECHNICIANS or LAB_TECHNICIANS with matching type
             const usersQuery = this.usersRepository
                 .createQueryBuilder('user')
-                .where('user.role = :role', { role: UserRole.TEST_TECHNICIAN })
+                .where('user.role IN (:...roles)', { roles: [UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN] })
                 .andWhere('user.isActive = :isActive', { isActive: true })
                 .andWhere('user.testTechnicianType = :adminRole', { adminRole });
 
@@ -134,7 +134,7 @@ export class AdminSelectionService {
 
             const usersQuery = this.usersRepository
                 .createQueryBuilder('user')
-                .where('user.role = :role', { role: UserRole.TEST_TECHNICIAN })
+                .where('user.role IN (:...roles)', { roles: [UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN] })
                 .andWhere('user.isActive = :isActive', { isActive: true })
                 .andWhere('user.testTechnicianType = :adminRole', { adminRole });
 

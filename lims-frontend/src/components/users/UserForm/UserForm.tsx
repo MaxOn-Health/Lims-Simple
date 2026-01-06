@@ -200,7 +200,7 @@ export const UserForm: React.FC<UserFormProps> = ({
         )}
       </div>
 
-      {selectedRole === UserRole.TEST_TECHNICIAN && (
+      {(selectedRole === UserRole.TEST_TECHNICIAN || selectedRole === UserRole.LAB_TECHNICIAN) && (
         <div>
           <label
             htmlFor="testTechnicianType"

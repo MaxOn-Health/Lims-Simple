@@ -33,5 +33,19 @@ export const authService = {
     const response = await apiClient.post<{ message: string }>('/auth/reset-password', { token, newPassword });
     return response.data;
   },
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const response = await apiClient.post<{ message: string }>('/auth/reset-password', { token, newPassword });
+    return response.data;
+  },
+
+  async setupPin(pin: string): Promise<{ message: string }> {
+    const response = await apiClient.post<{ message: string }>('/auth/setup-pin', { pin });
+    return response.data;
+  },
+
+  async verifyPin(pin: string): Promise<{ verified: boolean }> {
+    const response = await apiClient.post<{ verified: boolean }>('/auth/verify-pin', { pin });
+    return response.data;
+  },
 };
 

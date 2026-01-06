@@ -120,8 +120,10 @@ export class AssignmentsService {
           if (admin.testTechnicianType !== test.adminRole) throw new BadRequestException(`Override admin ${admin.fullName} cannot perform ${test.name}`);
         }
       } else {
-        // Auto-assign
-        admin = await this.adminSelectionService.findAvailableAdmin(test.adminRole, patient.projectId);
+        // Auto-assign: Default to Shared Pool (no specific admin)
+        // This allows any available technician in the department to claim the task.
+        admin = null;
+        // admin = await this.adminSelectionService.findAvailableAdmin(test.adminRole, patient.projectId);
       }
 
       const assignment = this.assignmentsRepository.create({
@@ -216,7 +218,9 @@ export class AssignmentsService {
         continue;
       }
 
-      const admin = await this.adminSelectionService.findAvailableAdmin(test.adminRole, patient.projectId);
+      // Preview: Default to Shared Pool
+      const admin = null;
+      // const admin = await this.adminSelectionService.findAvailableAdmin(test.adminRole, patient.projectId);
 
       previewItems.push({
         testId: test.id,
@@ -225,7 +229,7 @@ export class AssignmentsService {
         adminName: admin?.fullName || null,
         adminEmail: admin?.email || null,
         adminRole: test.adminRole,
-        isAvailable: !!admin,
+        isAvailable: true, // Always valid for Shared Pool if roles exist (simplified)
       });
     }
 

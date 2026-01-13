@@ -15,10 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/common/EmptyState/EmptyState';
 import { ErrorState } from '@/components/common/ErrorState/ErrorState';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUIStore } from '@/store/ui.store';
 import { getErrorMessage } from '@/utils/error-handler';
 import { ApiError } from '@/types/api.types';
-import { FileText, Loader2, Search } from 'lucide-react';
+import { FileText, Loader2, Search, AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/common/Skeleton';
 import { useDebounce } from '@/hooks/useDebounce/useDebounce';
 
@@ -37,6 +38,10 @@ export const ReportGeneration: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
+  
+  // Unsigned report state
+  const [allowUnsigned, setAllowUnsigned] = useState(false);
+  const [showUnsignedConfirm, setShowUnsignedConfirm] = useState(false);
 
   const fetchPatients = async () => {
     setIsLoadingPatients(true);
@@ -66,6 +71,7 @@ export const ReportGeneration: React.FC = () => {
     const patient = patients.find((p) => p.id === patientId);
     setSelectedPatient(patient || null);
     setGeneratedReport(null);
+    setAllowUnsigned(false);
 
     if (patientId) {
       setIsLoadingReadiness(true);
@@ -86,27 +92,48 @@ export const ReportGeneration: React.FC = () => {
     }
   };
 
-  const handleGenerate = async () => {
-    if (!selectedPatientId || !readiness?.isReady) {
+  const needsDoctorReview = readiness && (!readiness.details.reviewExists || !readiness.details.isSigned);
+
+  // Button should be enabled only if:
+  // 1. All required checks pass (assignments submitted, results exist)
+  // 2. AND either doctor review is not needed OR user has opted to skip it
+  const canGenerate = selectedPatientId && 
+    readiness && 
+    readiness.details.allAssignmentsSubmitted &&
+    readiness.details.allResultsExist &&
+    (!needsDoctorReview || allowUnsigned);
+
+  const handleGenerateClick = async () => {
+    if (!canGenerate) return;
+
+    if (needsDoctorReview && allowUnsigned) {
+      setShowUnsignedConfirm(true);
       return;
     }
 
+    await handleGenerate();
+  };
+
+  const handleGenerate = async () => {
+    if (!selectedPatientId) return;
+
+    setShowUnsignedConfirm(false);
     setIsGenerating(true);
     setError(null);
 
     try {
-      const report = await reportsService.generateReport(selectedPatientId);
+      const report = await reportsService.generateReport(selectedPatientId, allowUnsigned);
       setGeneratedReport(report);
       addToast({
         type: 'success',
-        message: 'Report generation started successfully',
+        message: allowUnsigned 
+          ? 'Unsigned report generation started successfully'
+          : 'Report generation started successfully',
       });
 
-      // If status is GENERATING, the status tracker will handle polling
       if (report.status === 'GENERATING') {
         // Status tracker will handle the rest
       } else if (report.status === 'COMPLETED') {
-        // Redirect to report view
         setTimeout(() => {
           router.push(`/reports/${report.id}`);
         }, 1500);
@@ -194,11 +221,38 @@ export const ReportGeneration: React.FC = () => {
           ) : readiness ? (
             <>
               <ReportReadinessCheck readiness={readiness} />
+              
+              {/* Unsigned Report Option */}
+              {needsDoctorReview && (
+                <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10 dark:border-yellow-800">
+                  <CardContent className="pt-6">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allowUnsigned}
+                        onChange={(e) => setAllowUnsigned(e.target.checked)}
+                        className="h-4 w-4 mt-1 text-primary-600 rounded border-gray-300"
+                      />
+                      <div>
+                        <p className="font-medium flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                          Generate without doctor signature
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          This will generate an unsigned preview report. The PDF will include a watermark
+                          indicating it is pending doctor review. Doctor can sign later to create a signed report.
+                        </p>
+                      </div>
+                    </label>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardContent className="pt-6">
                   <Button
-                    onClick={handleGenerate}
-                    disabled={!readiness.isReady || isGenerating}
+                    onClick={handleGenerateClick}
+                    disabled={!canGenerate || isGenerating}
                     className="w-full gap-2"
                   >
                     {isGenerating ? (
@@ -209,7 +263,7 @@ export const ReportGeneration: React.FC = () => {
                     ) : (
                       <>
                         <FileText className="h-4 w-4" />
-                        Generate Report
+                        {allowUnsigned ? 'Generate Unsigned Report' : 'Generate Report'}
                       </>
                     )}
                   </Button>
@@ -250,6 +304,42 @@ export const ReportGeneration: React.FC = () => {
           )}
         </>
       )}
+
+      {/* Unsigned Report Confirmation Dialog */}
+      <Dialog open={showUnsignedConfirm} onOpenChange={setShowUnsignedConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              Generate Unsigned Report
+            </DialogTitle>
+            <DialogDescription>
+              You are about to generate a report without doctor review and signature.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              The generated report will:
+            </p>
+            <ul className="mt-2 space-y-2 text-sm text-muted-foreground list-disc list-inside">
+              <li>Display a "UNSIGNED PREVIEW" watermark</li>
+              <li>Show "Report Pending Doctor Review" in the footer</li>
+              <li>Not include doctor name or signature date</li>
+            </ul>
+            <p className="mt-4 text-sm">
+              The doctor can still review and sign this report later to create an official signed version.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUnsignedConfirm(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleGenerate}>
+              Generate Unsigned Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

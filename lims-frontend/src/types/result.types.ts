@@ -50,6 +50,10 @@ export interface Result {
   patient?: PatientInfo;
   enteredByUser?: UserInfo;
   verifiedByUser?: UserInfo | null;
+  isEdited: boolean;
+  editedAt: Date | null;
+  editedBy: string | null;
+  editReason: string | null;
   warnings?: string[];
 }
 
@@ -62,6 +66,7 @@ export interface SubmitResultRequest {
 export interface UpdateResultRequest {
   resultValues?: Record<string, any>;
   notes?: string;
+  editReason?: string;
 }
 
 export interface ResultDisplayValue {

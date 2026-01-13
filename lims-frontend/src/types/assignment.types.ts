@@ -11,6 +11,8 @@ export interface PatientInfo {
   patientId: string;
   name: string;
   projectId?: string;
+  employeeId: string | null;
+  companyName: string | null;
 }
 
 export interface TestInfo {

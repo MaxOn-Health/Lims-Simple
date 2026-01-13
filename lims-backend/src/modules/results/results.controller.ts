@@ -126,6 +126,27 @@ export class ResultsController {
     return this.resultsService.updateResult(id, updateResultDto, user.userId);
   }
 
+  @Put('edit/:id')
+  @Roles(UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Edit a submitted result (original technician or SUPER_ADMIN)' })
+  @ApiParam({ name: 'id', description: 'Result UUID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Result edited successfully',
+    type: ResultResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Validation error or result is verified' })
+  @ApiResponse({ status: 403, description: 'Forbidden - only original technician or SUPER_ADMIN' })
+  @ApiResponse({ status: 404, description: 'Result not found' })
+  async editResult(
+    @Param('id') id: string,
+    @Body() updateResultDto: UpdateResultDto,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<ResultResponseDto> {
+    const currentUser = { id: user.userId, role: user.role } as any;
+    return this.resultsService.editResult(id, updateResultDto, currentUser);
+  }
+
   @Post(':id/verify')
   @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Verify result (SUPER_ADMIN only)' })

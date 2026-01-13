@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { assignmentsService } from '@/services/api/assignments.service';
 import { testsService } from '@/services/api/tests.service';
 import { resultsService } from '@/services/api/results.service';
@@ -15,21 +15,28 @@ import { Skeleton } from '@/components/common/Skeleton';
 import { useUIStore } from '@/store/ui.store';
 import { getErrorMessage } from '@/utils/error-handler';
 import { ApiError } from '@/types/api.types';
-import { FileText, User, FlaskConical, AlertCircle } from 'lucide-react';
+import { FileText, User, FlaskConical, AlertCircle, Edit3, History } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { reportsService } from '@/services/api/reports.service';
 import { ResultSuccessModal } from '../ResultSuccessModal/ResultSuccessModal';
 import { ResultPreviewModal } from '../ResultPreviewModal/ResultPreviewModal';
 import { PinConfirmationModal } from '@/components/common/PinConfirmationModal/PinConfirmationModal';
+import { useAuthStore } from '@/store/auth.store';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export const ResultEntryForm: React.FC = () => {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const assignmentId = params.assignmentId as string;
+  const isEditMode = searchParams.get('mode') === 'edit';
   const { addToast } = useUIStore();
+  const { user } = useAuthStore();
 
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [test, setTest] = useState<Test | null>(null);
+  const [existingResult, setExistingResult] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,6 +46,7 @@ export const ResultEntryForm: React.FC = () => {
   const [previewData, setPreviewData] = useState<any>(null);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pendingSubmissionData, setPendingSubmissionData] = useState<SubmitResultRequest | UpdateResultRequest | null>(null);
+  const [editReason, setEditReason] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,12 +60,7 @@ export const ResultEntryForm: React.FC = () => {
       setError(null);
 
       try {
-        const [assignmentData, testData] = await Promise.all([
-          assignmentsService.getAssignmentById(assignmentId),
-          // We'll get test from assignment.testId
-          Promise.resolve(null as Test | null),
-        ]);
-
+        const assignmentData = await assignmentsService.getAssignmentById(assignmentId);
         setAssignment(assignmentData);
 
         // Fetch test details
@@ -66,14 +69,34 @@ export const ResultEntryForm: React.FC = () => {
           setTest(testDetails);
         }
 
-        // Ensure assignment is in a state that allows result entry
-        if (
-          assignmentData.status !== AssignmentStatus.IN_PROGRESS &&
-          assignmentData.status !== AssignmentStatus.ASSIGNED
-        ) {
-          setError(
-            `Cannot submit results. Assignment must be IN_PROGRESS or ASSIGNED. Current status: ${assignmentData.status}`
-          );
+        // Check if we can view/edit based on status and ownership
+        const canEdit = isEditMode && 
+          assignmentData.status === AssignmentStatus.SUBMITTED && 
+          assignmentData.adminId === user?.id;
+        const canSubmit = assignmentData.status === AssignmentStatus.IN_PROGRESS || 
+                          assignmentData.status === AssignmentStatus.ASSIGNED;
+
+        // If edit mode, fetch existing result
+        if (isEditMode && canEdit) {
+          try {
+            const result = await resultsService.findByAssignment(assignmentId);
+            setExistingResult(result);
+          } catch (resultErr) {
+            console.error('Failed to fetch existing result:', resultErr);
+          }
+        }
+
+        // Set error if neither submit nor edit is allowed
+        if (!canSubmit && !canEdit) {
+          let errorMessage = `Cannot ${isEditMode ? 'edit' : 'submit'} results. `;
+          if (assignmentData.status === AssignmentStatus.SUBMITTED && assignmentData.adminId !== user?.id) {
+            errorMessage += 'You can only edit your own submitted results.';
+          } else if (assignmentData.status === AssignmentStatus.SUBMITTED) {
+            errorMessage += 'Assignment is submitted. Use edit mode to make changes.';
+          } else {
+            errorMessage += `Assignment must be IN_PROGRESS or ASSIGNED. Current status: ${assignmentData.status}`;
+          }
+          setError(errorMessage);
         }
       } catch (err) {
         const apiError = err as ApiError;
@@ -84,11 +107,22 @@ export const ResultEntryForm: React.FC = () => {
     };
 
     fetchData();
-  }, [assignmentId]);
+  }, [assignmentId, isEditMode, user?.id]);
 
   const handleSubmit = async (data: SubmitResultRequest | UpdateResultRequest) => {
+    // For edit mode, require edit reason
+    if (isEditMode) {
+      if (!editReason.trim()) {
+        addToast({
+          type: 'error',
+          message: 'Please provide a reason for editing this result',
+        });
+        return;
+      }
+    }
+
     // Store data and open PIN modal instead of submitting directly
-    setPendingSubmissionData(data);
+    setPendingSubmissionData({ ...data, editReason } as any);
     setShowPinModal(true);
   };
 
@@ -106,42 +140,47 @@ export const ResultEntryForm: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await resultsService.submitResult({
-        ...data,
-        assignmentId,
-      } as SubmitResultRequest);
+      if (isEditMode && existingResult) {
+        // Edit existing result
+        await resultsService.editResult(existingResult.id, data as UpdateResultRequest);
 
-      addToast({
-        type: 'success',
-        message: 'Result submitted successfully',
-      });
+        addToast({
+          type: 'success',
+          message: 'Result updated successfully',
+        });
 
-      // Show success modal instead of auto-redirecting
-      setShowSuccessModal(true);
+        setShowSuccessModal(true);
+      } else {
+        // Submit new result
+        await resultsService.submitResult({
+          ...data,
+          assignmentId,
+        } as SubmitResultRequest);
 
-      // Attempt to generate report immediately if possible (optimistic)
-      if (assignment.patientId) {
-        try {
-          const report = await reportsService.generateReport(assignment.patientId);
-          setGeneratedReportId(report.id);
-        } catch (reportErr) {
-          console.error('Failed to auto-generate report:', reportErr);
-          // We don't block the success modal if report generation fails, 
-          // user can try again from dashboard or we'll handle in print handler
+        addToast({
+          type: 'success',
+          message: 'Result submitted successfully',
+        });
+
+        setShowSuccessModal(true);
+
+        // Attempt to generate report immediately if possible (optimistic)
+        if (assignment.patientId) {
+          try {
+            const report = await reportsService.generateReport(assignment.patientId);
+            setGeneratedReportId(report.id);
+          } catch (reportErr) {
+            console.error('Failed to auto-generate report:', reportErr);
+          }
         }
       }
-
     } catch (err) {
       const apiError = err as ApiError;
       addToast({
         type: 'error',
-        message: getErrorMessage(apiError) || 'Failed to submit result',
+        message: getErrorMessage(apiError) || `Failed to ${isEditMode ? 'update' : 'submit'} result`,
       });
-      setIsSubmitting(false); // Only reset if error, keep loading if success (modal shows)
-    } finally {
-      if (!showSuccessModal) {
-        setIsSubmitting(false);
-      }
+      setIsSubmitting(false);
     }
   };
 
@@ -156,16 +195,14 @@ export const ResultEntryForm: React.FC = () => {
     try {
       let reportId = generatedReportId;
 
-      // If we didn't successfully generate it yet, try now
       if (!reportId) {
-        setIsSubmitting(true); // Re-use submitting state for loading
+        setIsSubmitting(true);
         const report = await reportsService.generateReport(assignment.patientId);
         reportId = report.id;
         setGeneratedReportId(report.id);
       }
 
       if (reportId) {
-        // Download/Open PDF
         await reportsService.downloadReport(reportId);
       }
     } catch (err) {
@@ -187,6 +224,14 @@ export const ResultEntryForm: React.FC = () => {
     router.back();
   };
 
+  // Determine if form should be displayed
+  const canSubmit = assignment?.status === AssignmentStatus.IN_PROGRESS || 
+                    assignment?.status === AssignmentStatus.ASSIGNED;
+  const canEdit = isEditMode && 
+                  assignment?.status === AssignmentStatus.SUBMITTED && 
+                  assignment?.adminId === user?.id;
+  const showForm = canSubmit || canEdit;
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -200,7 +245,7 @@ export const ResultEntryForm: React.FC = () => {
   if (error) {
     return (
       <ErrorState
-        title="Failed to load data"
+        title="Cannot Access"
         message={error}
         onRetry={() => window.location.reload()}
       />
@@ -221,21 +266,49 @@ export const ResultEntryForm: React.FC = () => {
     <div className="space-y-6 max-w-[1600px] mx-auto pb-20">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2 text-gray-900">
-          <FileText className="h-8 w-8 text-primary" />
-          Enter Test Results
+          {canEdit ? (
+            <>
+              <Edit3 className="h-8 w-8 text-yellow-600" />
+              Edit Test Result
+            </>
+          ) : (
+            <>
+              <FileText className="h-8 w-8 text-primary" />
+              Enter Test Results
+            </>
+          )}
         </h1>
         <p className="text-muted-foreground text-lg">
-          Record findings for the assigned test.
+          {canEdit 
+            ? 'Update the existing result with corrections.'
+            : 'Record findings for the assigned test.'}
         </p>
       </div>
 
+      {/* Edit Mode Banner */}
+      {canEdit && existingResult && (
+        <Alert className="mb-6 border-yellow-200 bg-yellow-50">
+          <History className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            You are editing a submitted result. The original values were entered on{' '}
+            {existingResult.enteredAt && new Date(existingResult.enteredAt).toLocaleString()}.
+            {existingResult.isEdited && (
+              <span className="block mt-1 text-sm">
+                This result was previously edited on {new Date(existingResult.editedAt).toLocaleString()}.
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Status Warning */}
       {assignment.status !== AssignmentStatus.IN_PROGRESS &&
-        assignment.status !== AssignmentStatus.ASSIGNED && (
+        assignment.status !== AssignmentStatus.ASSIGNED &&
+        assignment.status !== AssignmentStatus.SUBMITTED && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Cannot submit results. Assignment must be IN_PROGRESS or ASSIGNED. Current status:{' '}
+              Cannot {isEditMode ? 'edit' : 'submit'} results. Assignment must be IN_PROGRESS or ASSIGNED. Current status:{' '}
               {assignment.status}
             </AlertDescription>
           </Alert>
@@ -289,23 +362,45 @@ export const ResultEntryForm: React.FC = () => {
 
         {/* Right Column: Data Entry Form */}
         <div className="lg:col-span-2">
-          {(assignment.status === AssignmentStatus.IN_PROGRESS || assignment.status === AssignmentStatus.ASSIGNED) && (
+          {showForm && (
             <Card className="border-none shadow-lg ring-1 ring-black/5">
               <CardHeader className="bg-gray-50 border-b pb-4">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   Result Values
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Please enter the observed values carefully.
+                  {canEdit 
+                    ? 'Update the observed values as needed.'
+                    : 'Please enter the observed values carefully.'}
                 </p>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-6 space-y-6">
+                {/* Edit Reason Field (only in edit mode) */}
+                {canEdit && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <Label htmlFor="editReason" className="text-yellow-800 font-medium">
+                      Reason for Edit <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="editReason"
+                      placeholder="Explain why you are editing this result..."
+                      value={editReason}
+                      onChange={(e) => setEditReason(e.target.value)}
+                      className="mt-1 border-yellow-300 focus:border-yellow-500"
+                    />
+                    <p className="text-xs text-yellow-600 mt-1">
+                      This reason will be recorded in the audit trail.
+                    </p>
+                  </div>
+                )}
+
                 <DynamicResultForm
                   test={test}
+                  initialValues={existingResult?.resultValues || {}}
                   onSubmit={handleSubmit}
                   onPreview={handlePreview}
                   onCancel={handleCancel}
-                  mode="create"
+                  mode={canEdit ? 'edit' : 'create'}
                   isSubmitting={isSubmitting}
                 />
               </CardContent>
@@ -319,6 +414,7 @@ export const ResultEntryForm: React.FC = () => {
         onClose={handleBackToDashboard}
         onPrintReport={handlePrintReport}
         onBackToDashboard={handleBackToDashboard}
+        isEditMode={canEdit}
       />
 
       {assignment && test && (
@@ -335,12 +431,13 @@ export const ResultEntryForm: React.FC = () => {
         isOpen={showPinModal}
         onClose={() => setShowPinModal(false)}
         onSuccess={handlePinSuccess}
-        title="Confirm Submission"
-        description="Please enter your 4-digit PIN to confirm these results."
+        title={canEdit ? 'Confirm Update' : 'Confirm Submission'}
+        description={canEdit 
+          ? 'Please enter your 4-digit PIN to confirm these changes.'
+          : 'Please enter your 4-digit PIN to confirm these results.'
+        }
       />
     </div>
   );
 };
 
-// Add imports:
-// import { PinConfirmationModal } from '@/components/common/PinConfirmationModal/PinConfirmationModal';

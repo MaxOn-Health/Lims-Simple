@@ -41,6 +41,7 @@ export class ReportsController {
   @Roles(UserRole.RECEPTIONIST, UserRole.SUPER_ADMIN, UserRole.DOCTOR, UserRole.TEST_TECHNICIAN, UserRole.LAB_TECHNICIAN)
   @ApiOperation({ summary: 'Generate report for a patient' })
   @ApiParam({ name: 'patientId', description: 'Patient UUID' })
+  @ApiQuery({ name: 'skipDoctorReview', required: false, description: 'Skip doctor review requirement and generate unsigned report' })
   @ApiResponse({
     status: 201,
     description: 'Report generated successfully',
@@ -50,13 +51,15 @@ export class ReportsController {
   @ApiResponse({ status: 404, description: 'Patient not found' })
   async generateReport(
     @Param('patientId', UuidValidationPipe) patientId: string,
-    @Req() req: Request,
+    @Query('skipDoctorReview') skipDoctorReview?: string,
+    @Req() req?: Request,
   ): Promise<ReportResponseDto> {
-    const userId = req.user?.userId;
+    const userId = req?.user?.userId;
     if (!userId) {
       throw new NotFoundException('User not authenticated');
     }
-    return this.reportsService.generateReport(patientId, userId, req.user['role'] as UserRole);
+    const skipReview = skipDoctorReview === 'true';
+    return this.reportsService.generateReport(patientId, userId, req?.user['role'] as UserRole, skipReview);
   }
 
   @Get('patient/:patientId')

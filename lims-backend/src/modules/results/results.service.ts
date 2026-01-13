@@ -14,9 +14,9 @@ import { SubmitResultDto } from './dto/submit-result.dto';
 import { UpdateResultDto } from './dto/update-result.dto';
 import { ResultResponseDto } from './dto/result-response.dto';
 import { ResultValidationService } from './services/result-validation.service';
-// Removed duplicate ResultValidationService import
 import { AuditService } from '../audit/audit.service';
 import { ProjectAccessService } from '../../common/services/project-access.service';
+import { DoctorReview } from '../doctor-reviews/entities/doctor-review.entity';
 
 @Injectable()
 export class ResultsService {
@@ -27,6 +27,8 @@ export class ResultsService {
     private assignmentsRepository: Repository<Assignment>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(DoctorReview)
+    private doctorReviewsRepository: Repository<DoctorReview>,
     private resultValidationService: ResultValidationService,
     private auditService: AuditService,
     private projectAccessService: ProjectAccessService,
@@ -128,6 +130,128 @@ export class ResultsService {
     }
 
     return response;
+  }
+
+  async editResult(resultId: string, dto: UpdateResultDto, currentUser: { id: string, role: string }): Promise<ResultResponseDto> {
+    const userId = currentUser.id;
+
+    // Get existing result with assignment, test, and patient
+    const result = await this.testResultsRepository.findOne({
+      where: { id: resultId },
+      relations: ['assignment', 'assignment.test', 'assignment.patient', 'enteredByUser', 'verifiedByUser'],
+    });
+
+    if (!result) {
+      throw new NotFoundException(`Result with ID ${resultId} not found`);
+    }
+
+    // BLOCK: Cannot edit verified results
+    if (result.isVerified) {
+      throw new BadRequestException('Cannot edit verified results. Contact admin for changes.');
+    }
+
+    // BLOCK: Only original technician or SUPER_ADMIN can edit
+    if (result.enteredBy !== userId) {
+      const user = await this.usersRepository.findOne({ where: { id: userId } });
+      if (!user || user.role !== UserRole.SUPER_ADMIN) {
+        throw new ForbiddenException('Only the original technician can edit this result');
+      }
+    }
+
+    // Validate assignment status allows editing (must be SUBMITTED)
+    if (result.assignment.status !== AssignmentStatus.SUBMITTED) {
+      throw new BadRequestException(
+        `Cannot edit result. Assignment must be in SUBMITTED status. Current status: ${result.assignment.status}`
+      );
+    }
+
+    // Validate editReason is provided
+    if (!dto.editReason || dto.editReason.trim() === '') {
+      throw new BadRequestException('Edit reason is required when editing a result');
+    }
+
+    // Store old values for audit
+    const oldValues = {
+      resultValues: { ...result.resultValues },
+      notes: result.notes,
+    };
+
+    // Validate new result values if provided
+    if (dto.resultValues) {
+      const validation = this.resultValidationService.validateResultValues(
+        result.assignment.test.testFields,
+        dto.resultValues,
+        null,
+        null,
+      );
+
+      if (!validation.isValid) {
+        throw new BadRequestException(`Validation failed: ${validation.errors.join('; ')}`);
+      }
+
+      result.resultValues = dto.resultValues;
+    }
+
+    if (dto.notes !== undefined) {
+      result.notes = dto.notes || null;
+    }
+
+    // Update edit tracking fields
+    result.isEdited = true;
+    result.editedAt = new Date();
+    result.editedBy = userId;
+    result.editReason = dto.editReason;
+
+    const updatedResult = await this.testResultsRepository.save(result);
+
+    // Update assignment status back to COMPLETED to allow re-submission
+    result.assignment.status = AssignmentStatus.COMPLETED;
+    await this.assignmentsRepository.save(result.assignment);
+
+    // Log the edit with before/after values
+    await this.auditService.log(
+      userId,
+      'RESULT_EDITED',
+      'TestResult',
+      result.id,
+      {
+        oldValues,
+        newValues: {
+          resultValues: updatedResult.resultValues,
+          notes: updatedResult.notes,
+        },
+        editReason: dto.editReason,
+        assignmentId: result.assignmentId,
+        patientId: result.assignment.patientId,
+      },
+    );
+
+    // Check if doctor review exists and notify
+    const doctorReview = await this.doctorReviewsRepository.findOne({
+      where: { patientId: result.assignment.patientId },
+    });
+
+    if (doctorReview) {
+      // Log that doctor needs to re-review
+      await this.auditService.log(
+        userId,
+        'RESULT_EDITED_REVIEW_NEEDED',
+        'TestResult',
+        result.id,
+        {
+          patientId: result.assignment.patientId,
+          doctorReviewId: doctorReview.id,
+          editReason: dto.editReason,
+        },
+      );
+
+      // Note: In a real system, you might want to:
+      // - Send email/notification to the doctor
+      // - Set a flag on the doctor review indicating it needs re-review
+      // - Reset the isSigned flag on the doctor review
+    }
+
+    return this.mapToResponseDto(updatedResult);
   }
 
   async findByAssignment(assignmentId: string, currentUser?: { id: string, role: string }): Promise<ResultResponseDto> {
@@ -339,11 +463,15 @@ export class ResultsService {
         : undefined,
       verifiedByUser: result.verifiedByUser
         ? {
-          id: result.verifiedByUser.id,
-          email: result.verifiedByUser.email,
-          fullName: result.verifiedByUser.fullName,
-        }
+            id: result.verifiedByUser.id,
+            email: result.verifiedByUser.email,
+            fullName: result.verifiedByUser.fullName,
+          }
         : null,
+      isEdited: result.isEdited,
+      editedAt: result.editedAt,
+      editedBy: result.editedBy,
+      editReason: result.editReason,
     };
   }
 }

@@ -40,9 +40,14 @@ export const reportsService = {
     }
   },
 
-  async generateReport(patientId: string): Promise<GenerateReportResponse> {
+  async generateReport(patientId: string, allowUnsigned?: boolean): Promise<GenerateReportResponse> {
+    const params = new URLSearchParams();
+    if (allowUnsigned) {
+      params.append('skipDoctorReview', 'true');
+    }
+
     const response = await apiClient.post<GenerateReportResponse>(
-      `/reports/generate/${patientId}`
+      `/reports/generate/${patientId}${params.toString() ? `?${params.toString()}` : ''}`
     );
     return response.data;
   },

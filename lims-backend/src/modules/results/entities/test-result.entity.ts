@@ -45,6 +45,19 @@ export class TestResult {
   @Column({ type: 'timestamp', name: 'verified_at', nullable: true })
   verifiedAt: Date | null;
 
+  @Column({ type: 'boolean', name: 'is_edited', default: false, nullable: false })
+  isEdited: boolean;
+
+  @Column({ type: 'timestamp', name: 'edited_at', nullable: true })
+  editedAt: Date | null;
+
+  @Column({ type: 'uuid', name: 'edited_by', nullable: true })
+  @Index('IDX_test_results_edited_by')
+  editedBy: string | null;
+
+  @Column({ type: 'text', name: 'edit_reason', nullable: true })
+  editReason: string | null;
+
   @CreateDateColumn({ type: 'timestamp', name: 'created_at', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
@@ -67,6 +80,10 @@ export class TestResult {
   @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'verified_by' })
   verifiedByUser: User | null;
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'edited_by' })
+  editedByUser: User | null;
 }
 
 

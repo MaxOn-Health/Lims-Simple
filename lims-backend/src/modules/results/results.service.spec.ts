@@ -134,6 +134,11 @@ describe('ResultsService', () => {
     assignment: mockAssignment,
     enteredByUser: mockAdmin,
     verifiedByUser: null,
+    isEdited: false,
+    editedAt: null,
+    editedBy: null,
+    editReason: null,
+    editedByUser: null,
   };
 
   beforeEach(async () => {

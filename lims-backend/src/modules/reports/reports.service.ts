@@ -47,7 +47,8 @@ export class ReportsService {
   async generateReport(
     patientId: string,
     generatedBy: string,
-    userRole: UserRole, // Added role
+    userRole: UserRole,
+    skipDoctorReview: boolean = false,
   ): Promise<ReportResponseDto> {
     // Validate all tests are SUBMITTED
     const assignments = await this.assignmentsRepository.find({
@@ -69,21 +70,21 @@ export class ReportsService {
       );
     }
 
-    // Validate doctor review exists and is signed
+    // Validate doctor review exists and is signed (optional when skipDoctorReview is true)
     const review = await this.doctorReviewsRepository.findOne({
       where: { patientId },
       relations: ['doctor'],
     });
 
-    if (!review) {
+    if (!review && !skipDoctorReview) {
       throw new BadRequestException(
-        'Doctor review must exist before generating a report',
+        'Doctor review must exist before generating a report. Set skipDoctorReview=true to generate unsigned report.',
       );
     }
 
-    if (!review.isSigned) {
+    if (review && !review.isSigned && !skipDoctorReview) {
       throw new BadRequestException(
-        'Doctor review must be signed before generating a report',
+        'Doctor review must be signed before generating a report. Set skipDoctorReview=true to generate unsigned report.',
       );
     }
 
@@ -101,7 +102,7 @@ export class ReportsService {
     const report = this.reportsRepository.create({
       patientId,
       reportNumber,
-      doctorReviewId: review.id,
+      doctorReviewId: review?.id || null,
       status: ReportStatus.GENERATING,
       generatedBy,
     });
@@ -109,8 +110,8 @@ export class ReportsService {
     const savedReport = await this.reportsRepository.save(report);
 
     try {
-      // Collect all data
-      const reportData = await this.collectReportData(patientId, review);
+      // Collect all data (pass null review if skipped)
+      const reportData = await this.collectReportData(patientId, review || null, skipDoctorReview);
 
       // Generate PDF
       const pdfBuffer = await this.pdfGenerationService.generatePdf({
@@ -141,6 +142,7 @@ export class ReportsService {
         {
           patientId,
           reportNumber,
+          skipDoctorReview,
         },
       );
 
@@ -163,7 +165,8 @@ export class ReportsService {
 
   private async collectReportData(
     patientId: string,
-    review: DoctorReview,
+    review: DoctorReview | null,
+    skipDoctorReview: boolean = false,
   ): Promise<Omit<ReportData, 'reportNumber' | 'generatedAt'>> {
     // Get patient with packages
     const patient = await this.patientsRepository.findOne({
@@ -226,11 +229,13 @@ export class ReportsService {
         ? patient.patientPackages[0]
         : null;
 
-    // Get doctor info
-    const doctorReview = await this.doctorReviewsRepository.findOne({
-      where: { id: review.id },
-      relations: ['doctor'],
-    });
+    // Get doctor info (only if review exists)
+    const doctorReview = review
+      ? await this.doctorReviewsRepository.findOne({
+          where: { id: review.id },
+          relations: ['doctor'],
+        })
+      : null;
 
     return {
       patient: {
@@ -245,16 +250,21 @@ export class ReportsService {
       },
       package: patientPackage
         ? {
-          name: (patientPackage.package as any)?.name || 'N/A',
-          validityPeriod: (patientPackage.package as any)?.validityDays || undefined,
-        }
+            name: (patientPackage.package as any)?.name || 'N/A',
+            validityPeriod: (patientPackage.package as any)?.validityDays || undefined,
+          }
         : undefined,
       testResults,
-      doctorReview: {
-        remarks: review.remarks || undefined,
-        doctorName: doctorReview?.doctor?.fullName || undefined,
-        signedAt: review.signedAt || undefined,
-      },
+      doctorReview: review
+        ? {
+            remarks: review.remarks || undefined,
+            doctorName: doctorReview?.doctor?.fullName || undefined,
+            signedAt: review.signedAt || undefined,
+          }
+        : skipDoctorReview
+        ? { remarks: undefined, doctorName: undefined, signedAt: undefined }
+        : undefined,
+      isUnsignedPreview: skipDoctorReview,
     };
   }
 

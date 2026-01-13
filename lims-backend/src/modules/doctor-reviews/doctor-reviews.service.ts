@@ -623,11 +623,15 @@ export class DoctorReviewsService {
         : undefined,
       verifiedByUser: result.verifiedByUser
         ? {
-          id: result.verifiedByUser.id,
-          email: result.verifiedByUser.email,
-          fullName: result.verifiedByUser.fullName,
-        }
+            id: result.verifiedByUser.id,
+            email: result.verifiedByUser.email,
+            fullName: result.verifiedByUser.fullName,
+          }
         : null,
+      isEdited: result.isEdited,
+      editedAt: result.editedAt,
+      editedBy: result.editedBy,
+      editReason: result.editReason,
     };
   }
 

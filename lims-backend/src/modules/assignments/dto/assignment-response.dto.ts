@@ -10,6 +10,12 @@ export class PatientInfoDto {
 
   @ApiProperty({ description: 'Patient name', example: 'John Doe' })
   name: string;
+
+  @ApiPropertyOptional({ description: 'Employee ID', example: 'EMP001' })
+  employeeId: string | null;
+
+  @ApiPropertyOptional({ description: 'Company name', example: 'Acme Corp' })
+  companyName: string | null;
 }
 
 export class TestInfoDto {

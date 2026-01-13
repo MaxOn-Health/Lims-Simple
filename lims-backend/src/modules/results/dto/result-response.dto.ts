@@ -103,6 +103,18 @@ export class ResultResponseDto {
   @ApiPropertyOptional({ description: 'Verified by user information', type: UserInfoDto })
   verifiedByUser?: UserInfoDto | null;
 
+  @ApiProperty({ description: 'Has been edited', example: false })
+  isEdited: boolean;
+
+  @ApiPropertyOptional({ description: 'Edited at timestamp', example: '2024-11-10T08:00:00.000Z' })
+  editedAt: Date | null;
+
+  @ApiPropertyOptional({ description: 'Edited by user ID', example: 'uuid' })
+  editedBy: string | null;
+
+  @ApiPropertyOptional({ description: 'Reason for editing', example: 'Fixed typo in result value' })
+  editReason: string | null;
+
   @ApiPropertyOptional({
     description: 'Validation warnings (values outside normal range)',
     type: [String],

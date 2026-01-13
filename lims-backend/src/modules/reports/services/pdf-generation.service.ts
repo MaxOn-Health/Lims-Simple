@@ -37,6 +37,7 @@ export interface ReportData {
   };
   reportNumber: string;
   generatedAt: Date;
+  isUnsignedPreview?: boolean;
 }
 
 @Injectable()
@@ -88,14 +89,36 @@ export class PdfGenerationService {
           this.addDoctorRemarks(doc, data.doctorReview.remarks);
         }
 
+        // Add watermark for unsigned preview
+        if (data.isUnsignedPreview) {
+          this.addUnsignedWatermark(doc);
+        }
+
         // Footer
-        this.addFooter(doc, data.doctorReview);
+        this.addFooter(doc, data.doctorReview, data.isUnsignedPreview);
 
         doc.end();
       } catch (error) {
         reject(error);
       }
     });
+  }
+
+  private addUnsignedWatermark(doc: typeof PDFDocument.prototype): void {
+    doc.save();
+    const pageWidth = doc.page.width;
+    const pageHeight = doc.page.height;
+    
+    doc.rotate(45, { origin: [pageWidth / 2, pageHeight / 2] });
+    doc.fontSize(60);
+    doc.font('Helvetica-Bold');
+    doc.fillColor('rgba(200, 200, 200, 0.3)');
+    doc.text('UNSIGNED PREVIEW', 0, 0, {
+      align: 'center',
+      width: pageWidth,
+    });
+    doc.fillColor('black');
+    doc.restore();
   }
 
   private addHeader(
@@ -606,6 +629,7 @@ export class PdfGenerationService {
   private addFooter(
     doc: typeof PDFDocument.prototype,
     doctorReview?: ReportData['doctorReview'],
+    isUnsignedPreview?: boolean,
   ): void {
     // Move to bottom of page
     const pageHeight = doc.page.height;
@@ -639,10 +663,33 @@ export class PdfGenerationService {
         );
     }
 
-    doc
-      .fontSize(9)
-      .font('Helvetica-Oblique')
-      .text('Digitally Signed', { align: 'right' });
+    // Handle unsigned preview
+    if (isUnsignedPreview) {
+      doc.fontSize(10).font('Helvetica-Bold')
+         .fillColor('#ff6600')
+         .text('Report Pending Doctor Review', { align: 'left' })
+         .fillColor('black');
+
+      doc.fontSize(9).font('Helvetica-Oblique')
+         .fillColor('#999999')
+         .text('Unsigned Preview', { align: 'right' })
+         .fillColor('black');
+    } else if (doctorReview?.signedAt) {
+      doc
+        .fontSize(9)
+        .font('Helvetica-Oblique')
+        .text('Digitally Signed', { align: 'right' });
+    } else if (!doctorReview?.doctorName) {
+      doc.fontSize(10).font('Helvetica-Bold')
+         .fillColor('#ff6600')
+         .text('Report Pending Doctor Review', { align: 'left' })
+         .fillColor('black');
+
+      doc.fontSize(9).font('Helvetica-Oblique')
+         .fillColor('#999999')
+         .text('Unsigned Preview', { align: 'right' })
+         .fillColor('black');
+    }
   }
 }
 

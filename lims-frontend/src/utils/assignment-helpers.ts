@@ -60,9 +60,9 @@ export function getValidStatusTransitions(
   const validTransitions: Record<AssignmentStatus, AssignmentStatus[]> = {
     [AssignmentStatus.PENDING]: [AssignmentStatus.ASSIGNED],
     [AssignmentStatus.ASSIGNED]: [AssignmentStatus.IN_PROGRESS],
-    [AssignmentStatus.IN_PROGRESS]: [],
-    [AssignmentStatus.COMPLETED]: [AssignmentStatus.SUBMITTED],
-    [AssignmentStatus.SUBMITTED]: [], // No transitions from SUBMITTED
+    [AssignmentStatus.IN_PROGRESS]: [AssignmentStatus.COMPLETED],
+    [AssignmentStatus.COMPLETED]: [AssignmentStatus.SUBMITTED, AssignmentStatus.IN_PROGRESS],
+    [AssignmentStatus.SUBMITTED]: [AssignmentStatus.COMPLETED],
   };
 
   return validTransitions[currentStatus] || [];
@@ -80,6 +80,16 @@ export function canUpdateStatus(assignment: Assignment, userId: string): boolean
   return (
     assignment.adminId === userId &&
     assignment.status !== AssignmentStatus.SUBMITTED
+  );
+}
+
+export function canEditResult(assignment: Assignment, userId: string): boolean {
+  // Can edit result if:
+  // 1. Assignment is SUBMITTED
+  // 2. User is the assigned admin (original technician)
+  return (
+    assignment.status === AssignmentStatus.SUBMITTED &&
+    assignment.adminId === userId
   );
 }
 

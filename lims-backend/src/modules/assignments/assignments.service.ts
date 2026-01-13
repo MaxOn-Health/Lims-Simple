@@ -636,9 +636,9 @@ export class AssignmentsService {
     const validTransitions: Record<AssignmentStatus, AssignmentStatus[]> = {
       [AssignmentStatus.PENDING]: [AssignmentStatus.ASSIGNED],
       [AssignmentStatus.ASSIGNED]: [AssignmentStatus.IN_PROGRESS],
-      [AssignmentStatus.IN_PROGRESS]: [],
-      [AssignmentStatus.COMPLETED]: [AssignmentStatus.SUBMITTED],
-      [AssignmentStatus.SUBMITTED]: [], // No transitions from SUBMITTED
+      [AssignmentStatus.IN_PROGRESS]: [AssignmentStatus.COMPLETED],
+      [AssignmentStatus.COMPLETED]: [AssignmentStatus.SUBMITTED, AssignmentStatus.IN_PROGRESS],
+      [AssignmentStatus.SUBMITTED]: [AssignmentStatus.COMPLETED],
     };
 
     if (!validTransitions[currentStatus]?.includes(newStatus)) {
@@ -663,10 +663,12 @@ export class AssignmentsService {
       updatedAt: assignment.updatedAt,
       patient: assignment.patient
         ? {
-          id: assignment.patient.id,
-          patientId: assignment.patient.patientId,
-          name: assignment.patient.name,
-        }
+            id: assignment.patient.id,
+            patientId: assignment.patient.patientId,
+            name: assignment.patient.name,
+            employeeId: assignment.patient.employeeId,
+            companyName: assignment.patient.companyName,
+          }
         : undefined,
       test: assignment.test
         ? {

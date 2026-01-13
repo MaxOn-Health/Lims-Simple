@@ -1,4 +1,4 @@
-import { IsObject, IsOptional, IsString } from 'class-validator';
+import { IsObject, IsOptional, IsString, IsNotEmpty, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateResultDto {
@@ -20,6 +20,15 @@ export class UpdateResultDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({
+    description: 'Reason for editing the result (required when editing)',
+    example: 'Fixed typo in the result value',
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'Edit reason is required when editing a result' })
+  @MaxLength(500, { message: 'Edit reason must not exceed 500 characters' })
+  editReason?: string;
 }
 
 

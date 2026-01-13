@@ -125,8 +125,16 @@ export const MyAssignmentsDashboard: React.FC = () => {
         const patientName = assignment.patient?.name?.toLowerCase() || '';
         const patientId = assignment.patient?.patientId?.toLowerCase() || '';
         const testName = assignment.test?.name?.toLowerCase() || '';
+        const employeeId = assignment.patient?.employeeId?.toLowerCase() || '';
+        const companyName = assignment.patient?.companyName?.toLowerCase() || '';
 
-        return patientName.includes(query) || patientId.includes(query) || testName.includes(query);
+        return (
+          patientName.includes(query) ||
+          patientId.includes(query) ||
+          testName.includes(query) ||
+          employeeId.includes(query) ||
+          companyName.includes(query)
+        );
       });
     }
 
@@ -304,7 +312,7 @@ export const MyAssignmentsDashboard: React.FC = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
             <Input
-              placeholder="Find a patient or test..."
+              placeholder="Find by patient name, ID, employee ID, company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-12 text-lg shadow-sm"

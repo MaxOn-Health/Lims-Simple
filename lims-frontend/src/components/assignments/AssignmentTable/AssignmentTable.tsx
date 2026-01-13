@@ -16,8 +16,9 @@ import { Button } from '@/components/common/Button/Button';
 import { AssignmentStatusBadge } from '../AssignmentStatusBadge/AssignmentStatusBadge';
 import { HasRole } from '@/components/common/HasRole/HasRole';
 import { UserRole } from '@/types/user.types';
-import { Eye, UserCog, RefreshCw, FlaskConical } from 'lucide-react';
-import { formatAssignmentDateShort } from '@/utils/assignment-helpers';
+import { Eye, UserCog, RefreshCw, FlaskConical, Edit3 } from 'lucide-react';
+import { formatAssignmentDateShort, canEditResult } from '@/utils/assignment-helpers';
+import { useAuthStore } from '@/store/auth.store';
 
 interface AssignmentTableProps {
   assignments: Assignment[];
@@ -32,6 +33,8 @@ export const AssignmentTable: React.FC<AssignmentTableProps> = ({
   onUpdateStatus,
   isLoading = false,
 }) => {
+  const { user } = useAuthStore();
+
   if (isLoading) {
     return (
       <div className="p-4">
@@ -156,6 +159,19 @@ export const AssignmentTable: React.FC<AssignmentTableProps> = ({
                           >
                             <FlaskConical className="h-4 w-4" />
                             <span className="text-xs">Enter Result</span>
+                          </Button>
+                        </Link>
+                      )}
+
+                      {assignment.status === 'SUBMITTED' && canEditResult(assignment, user?.id) && (
+                        <Link href={`/results/entry/${assignment.id}?mode=edit`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2 flex items-center gap-1 border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                            <span className="text-xs">Edit Result</span>
                           </Button>
                         </Link>
                       )}

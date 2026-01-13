@@ -22,6 +22,11 @@ export const resultsService = {
     return response.data;
   },
 
+  async editResult(id: string, data: UpdateResultRequest): Promise<Result> {
+    const response = await apiClient.put<Result>(`/results/edit/${id}`, data);
+    return response.data;
+  },
+
   async verifyResult(id: string): Promise<Result> {
     const response = await apiClient.post<Result>(`/results/${id}/verify`);
     return response.data;

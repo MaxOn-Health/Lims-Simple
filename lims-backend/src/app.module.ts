@@ -82,6 +82,9 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
           return {
             ...baseConfig,
             url: dbConfig.url,
+            ssl: {
+              rejectUnauthorized: false,
+            },
           };
         }
 
@@ -92,6 +95,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
           username: dbConfig?.username || 'postgres',
           password: dbConfig?.password || 'postgres',
           database: dbConfig?.database || 'lims_db',
+          ssl: dbConfig?.host ? undefined : { rejectUnauthorized: false },
         };
       },
       inject: [ConfigService],

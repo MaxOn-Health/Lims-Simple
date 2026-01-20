@@ -30,6 +30,9 @@ import { AssignmentsService } from '../assignments/assignments.service';
 import { ProjectAccessService } from '../../common/services/project-access.service';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Logger } from '@nestjs/common';
+import { TransactionManager } from '../../common/database/transaction-manager.service';
+import { Transactional } from '../../common/decorators/transactional.decorator';
+import { TransactionalRepository } from '../../common/database/transactional-repository';
 
 @Injectable()
 export class PatientsService {
@@ -58,9 +61,20 @@ export class PatientsService {
     private projectsService: ProjectsService,
     private assignmentsService: AssignmentsService,
     private projectAccessService: ProjectAccessService,
+    private transactionManager: TransactionManager,
   ) { }
 
+  @Transactional({ maxRetries: 3 })
   async register(createPatientDto: CreatePatientDto, registeredByUserId: string, userRole?: string): Promise<PatientResponseDto> {
+    const qr = this.transactionManager.getCurrentTransaction();
+    const patientRepo = new TransactionalRepository(this.patientsRepository, qr);
+    const patientPackageRepo = new TransactionalRepository(this.patientPackagesRepository, qr);
+    const testsRepo = new TransactionalRepository(this.testsRepository, qr);
+    const packagesRepo = new TransactionalRepository(this.packagesRepository, qr);
+    const packageTestsRepo = new TransactionalRepository(this.packageTestsRepository, qr);
+    const assignmentsRepo = new TransactionalRepository(this.assignmentsRepository, qr);
+    const testResultsRepo = new TransactionalRepository(this.testResultsRepository, qr);
+    const bloodSamplesRepo = new TransactionalRepository(this.bloodSamplesRepository, qr);
     // Validate project if projectId is provided
     let project = null;
     if (createPatientDto.projectId) {
@@ -107,7 +121,7 @@ export class PatientsService {
     // Validate package exists and is active (only if packageId is provided)
     let pkg = null;
     if (createPatientDto.packageId) {
-      pkg = await this.packagesRepository.findOne({
+      pkg = await packagesRepo.findOne({
         where: { id: createPatientDto.packageId },
       });
 
@@ -122,7 +136,7 @@ export class PatientsService {
 
     // Validate tests exist and are active
     if (testIds && testIds.length > 0) {
-      const tests = await this.testsRepository.find({
+      const tests = await testsRepo.find({
         where: testIds.map((id) => ({ id, isActive: true })),
       });
 
@@ -151,7 +165,7 @@ export class PatientsService {
     const barcodeNumber = this.generateBarcodeNumber();
 
     // Create patient
-    const patient = this.patientsRepository.create({
+    const patient = patientRepo.create({
       patientId,
       barcodeNumber,
       name: createPatientDto.name,
@@ -165,15 +179,10 @@ export class PatientsService {
       projectId: createPatientDto.projectId || null,
     });
 
-    const savedPatient = await this.patientsRepository.save(patient);
-
-    // Update project statistics if project exists
-    if (project) {
-      await this.projectsService.updateStatistics(project.id);
-    }
+    const savedPatient = await patientRepo.save(patient);
 
     // Create patient package (packageId can be null if only tests are selected)
-    const patientPackage = this.patientPackagesRepository.create({
+    const patientPackage = patientPackageRepo.create({
       patientId: savedPatient.id,
       packageId: createPatientDto.packageId || null,
       addonTestIds: testIds,
@@ -183,20 +192,14 @@ export class PatientsService {
       registeredBy: registeredByUserId,
     });
 
-    await this.patientPackagesRepository.save(patientPackage);
+    await patientPackageRepo.save(patientPackage);
 
-    // Auto-assign tests to technicians
-    try {
-      await this.assignmentsService.autoAssign(savedPatient.id, registeredByUserId);
-      this.logger.log(`Auto-assignment completed for patient ${savedPatient.patientId}`);
-    } catch (error) {
-      // Log error but don't fail patient registration
-      this.logger.error(
-        `Failed to auto-assign tests for patient ${savedPatient.patientId}: ${error.message}`,
-        error.stack,
-      );
-      // Patient registration succeeds even if assignment fails
-      // Assignments can be created manually later if needed
+    // Auto-assign tests to technicians (runs in same transaction)
+    await this.assignmentsService.autoAssign(savedPatient.id, registeredByUserId);
+
+    // Update project statistics if project exists (runs in same transaction)
+    if (project) {
+      await this.projectsService.updateStatistics(project.id, qr);
     }
 
     // Log audit
@@ -595,8 +598,13 @@ export class PatientsService {
     return this.mapToResponseDto(updatedPatient!, true);
   }
 
+  @Transactional({ maxRetries: 3 })
   async updatePayment(id: string, updatePaymentDto: UpdatePaymentDto, userId: string): Promise<PatientResponseDto> {
-    const patient = await this.patientsRepository.findOne({
+    const qr = this.transactionManager.getCurrentTransaction();
+    const patientRepo = new TransactionalRepository(this.patientsRepository, qr);
+    const patientPackageRepo = new TransactionalRepository(this.patientPackagesRepository, qr);
+
+    const patient = await patientRepo.findOne({
       where: { id },
       relations: ['patientPackages'],
     });
@@ -634,7 +642,7 @@ export class PatientsService {
     const oldPaymentStatus = patientPackage.paymentStatus;
     const oldPaymentAmount = patientPackage.paymentAmount;
 
-    await this.patientPackagesRepository.update(patientPackage.id, {
+    await patientPackageRepo.update(patientPackage.id, {
       paymentStatus: updatePaymentDto.paymentStatus,
       paymentAmount: updatePaymentDto.paymentAmount,
     });
@@ -648,7 +656,7 @@ export class PatientsService {
       newPaymentAmount: updatePaymentDto.paymentAmount,
     });
 
-    const updatedPatient = await this.patientsRepository.findOne({
+    const updatedPatient = await patientRepo.findOne({
       where: { id },
       relations: ['patientPackages', 'patientPackages.package', 'patientPackages.registeredByUser'],
     });

@@ -23,6 +23,9 @@ import { AutoAssignPreviewItemDto } from './dto/auto-assign.dto';
 import { AdminSelectionService } from './services/admin-selection.service';
 import { ProjectAccessService } from '../../common/services/project-access.service';
 import { AuditService } from '../audit/audit.service';
+import { TransactionManager } from '../../common/database/transaction-manager.service';
+import { Transactional } from '../../common/decorators/transactional.decorator';
+import { TransactionalRepository } from '../../common/database/transactional-repository';
 
 @Injectable()
 export class AssignmentsService {
@@ -44,15 +47,26 @@ export class AssignmentsService {
     private adminSelectionService: AdminSelectionService,
     private auditService: AuditService,
     private projectAccessService: ProjectAccessService,
+    private transactionManager: TransactionManager,
   ) { }
 
+  @Transactional({ maxRetries: 3 })
   async autoAssign(
     patientId: string,
     assignedByUserId: string,
     overrides: Record<string, string> = {}
   ): Promise<AssignmentResponseDto[]> {
+    const qr = this.transactionManager.getCurrentTransaction();
+    const assignmentsRepo = new TransactionalRepository(this.assignmentsRepository, qr);
+    const patientsRepo = new TransactionalRepository(this.patientsRepository, qr);
+    const patientPackagesRepo = new TransactionalRepository(this.patientPackagesRepository, qr);
+    const testsRepo = new TransactionalRepository(this.testsRepository, qr);
+    const packagesRepo = new TransactionalRepository(this.packagesRepository, qr);
+    const packageTestsRepo = new TransactionalRepository(this.packageTestsRepository, qr);
+    const usersRepo = new TransactionalRepository(this.usersRepository, qr);
+
     // Get patient with packages
-    const patient = await this.patientsRepository.findOne({
+    const patient = await patientsRepo.findOne({
       where: { id: patientId },
       relations: ['patientPackages', 'patientPackages.package'],
     });
@@ -75,7 +89,7 @@ export class AssignmentsService {
     // Get all tests from package
     const packageTestIds: string[] = [];
     if (patientPackage.packageId) {
-      const packageTests = await this.packageTestsRepository.find({
+      const packageTests = await packageTestsRepo.find({
         where: { packageId: patientPackage.packageId },
         relations: ['test'],
       });
@@ -89,12 +103,12 @@ export class AssignmentsService {
       throw new BadRequestException('No tests found for patient');
     }
 
-    const tests = await this.testsRepository.find({
+    const tests = await testsRepo.find({
       where: { id: In(allTestIds), isActive: true },
     });
 
     // Get existing assignments
-    const existingAssignments = await this.assignmentsRepository.find({
+    const existingAssignments = await assignmentsRepo.find({
       where: { patientId },
     });
     const existingTestIds = new Set(existingAssignments.map((a) => a.testId));
@@ -111,7 +125,7 @@ export class AssignmentsService {
 
       if (overrideAdminId) {
         // Use override
-        admin = await this.usersRepository.findOne({ where: { id: overrideAdminId, isActive: true } });
+        admin = await usersRepo.findOne({ where: { id: overrideAdminId, isActive: true } });
         // Basic validation for override
         if (!admin || admin.testTechnicianType !== test.adminRole) {
           // Fallback to auto-assign or throw? For now fallback to auto-assign if invalid
@@ -126,7 +140,7 @@ export class AssignmentsService {
         // admin = await this.adminSelectionService.findAvailableAdmin(test.adminRole, patient.projectId);
       }
 
-      const assignment = this.assignmentsRepository.create({
+      const assignment = assignmentsRepo.create({
         patientId,
         testId: test.id,
         adminId: admin?.id || null,
@@ -135,7 +149,7 @@ export class AssignmentsService {
         assignedBy: assignedByUserId,
       });
 
-      const savedAssignment = await this.assignmentsRepository.save(assignment);
+      const savedAssignment = await assignmentsRepo.save(assignment);
       createdAssignments.push(savedAssignment);
 
       await this.auditService.log(
@@ -157,7 +171,7 @@ export class AssignmentsService {
     // Reload all created assignments with relations
     if (createdAssignments.length > 0) {
       const assignmentIds = createdAssignments.map(a => a.id);
-      const reloadedAssignments = await this.assignmentsRepository.find({
+      const reloadedAssignments = await assignmentsRepo.find({
         where: { id: In(assignmentIds) },
         relations: ['patient', 'test', 'admin', 'assignedByUser'],
       });
@@ -236,13 +250,21 @@ export class AssignmentsService {
     return previewItems;
   }
 
+  @Transactional({ maxRetries: 3 })
   async manualAssign(
     dto: CreateAssignmentDto,
     assignedByUserId: string,
     userRole?: string
   ): Promise<AssignmentResponseDto> {
+    const qr = this.transactionManager.getCurrentTransaction();
+    const assignmentsRepo = new TransactionalRepository(this.assignmentsRepository, qr);
+    const patientsRepo = new TransactionalRepository(this.patientsRepository, qr);
+    const testsRepo = new TransactionalRepository(this.testsRepository, qr);
+    const packageTestsRepo = new TransactionalRepository(this.packageTestsRepository, qr);
+    const usersRepo = new TransactionalRepository(this.usersRepository, qr);
+
     // Validate patient exists
-    const patient = await this.patientsRepository.findOne({
+    const patient = await patientsRepo.findOne({
       where: { id: dto.patientId },
       relations: ['patientPackages', 'patientPackages.package'],
     });
@@ -256,7 +278,7 @@ export class AssignmentsService {
     }
 
     // Validate test exists and is active
-    const test = await this.testsRepository.findOne({
+    const test = await testsRepo.findOne({
       where: { id: dto.testId, isActive: true },
     });
 
@@ -273,7 +295,7 @@ export class AssignmentsService {
     // Get package test IDs if package exists
     const packageTestIds: string[] = [];
     if (patientPackage.packageId) {
-      const packageTests = await this.packageTestsRepository.find({
+      const packageTests = await packageTestsRepo.find({
         where: { packageId: patientPackage.packageId },
       });
       packageTestIds.push(...packageTests.map((pt) => pt.testId));
@@ -290,7 +312,7 @@ export class AssignmentsService {
     // Validate admin if provided
     let admin: User | null = null;
     if (dto.adminId) {
-      admin = await this.usersRepository.findOne({
+      admin = await usersRepo.findOne({
         where: { id: dto.adminId, isActive: true },
       });
 
@@ -313,7 +335,7 @@ export class AssignmentsService {
     }
 
     // Check if assignment already exists
-    const existingAssignment = await this.assignmentsRepository.findOne({
+    const existingAssignment = await assignmentsRepo.findOne({
       where: { patientId: dto.patientId, testId: dto.testId },
     });
 
@@ -324,10 +346,10 @@ export class AssignmentsService {
       existingAssignment.status = admin ? AssignmentStatus.ASSIGNED : AssignmentStatus.PENDING;
       existingAssignment.assignedAt = admin ? new Date() : null;
       existingAssignment.assignedBy = assignedByUserId;
-      assignment = await this.assignmentsRepository.save(existingAssignment);
+      assignment = await assignmentsRepo.save(existingAssignment);
     } else {
       // Create new assignment
-      assignment = this.assignmentsRepository.create({
+      assignment = assignmentsRepo.create({
         patientId: dto.patientId,
         testId: dto.testId,
         adminId: admin?.id || null,
@@ -335,11 +357,11 @@ export class AssignmentsService {
         assignedAt: admin ? new Date() : null,
         assignedBy: assignedByUserId,
       });
-      assignment = await this.assignmentsRepository.save(assignment);
+      assignment = await assignmentsRepo.save(assignment);
     }
 
     // Reload with relations to populate admin, patient, test for response
-    const savedAssignment = await this.assignmentsRepository.findOne({
+    const savedAssignment = await assignmentsRepo.findOne({
       where: { id: assignment.id },
       relations: ['patient', 'test', 'admin', 'assignedByUser'],
     });
@@ -362,13 +384,18 @@ export class AssignmentsService {
     return this.mapToResponseDto(savedAssignment!);
   }
 
+  @Transactional({ maxRetries: 3 })
   async reassign(
     assignmentId: string,
     dto: ReassignAssignmentDto,
     assignedByUserId: string,
     userRole?: string
   ): Promise<AssignmentResponseDto> {
-    const assignment = await this.assignmentsRepository.findOne({
+    const qr = this.transactionManager.getCurrentTransaction();
+    const assignmentsRepo = new TransactionalRepository(this.assignmentsRepository, qr);
+    const usersRepo = new TransactionalRepository(this.usersRepository, qr);
+
+    const assignment = await assignmentsRepo.findOne({
       where: { id: assignmentId },
       relations: ['test'],
     });
@@ -378,7 +405,7 @@ export class AssignmentsService {
     }
 
     // Validate admin exists and has correct testTechnicianType
-    const admin = await this.usersRepository.findOne({
+    const admin = await usersRepo.findOne({
       where: { id: dto.adminId, isActive: true },
     });
 
@@ -404,10 +431,10 @@ export class AssignmentsService {
     assignment.assignedAt = new Date();
     assignment.assignedBy = assignedByUserId;
 
-    const updatedAssignment = await this.assignmentsRepository.save(assignment);
+    const updatedAssignment = await assignmentsRepo.save(assignment);
 
     // Reload with relations to populate admin, patient, test for response
-    const reloadedAssignment = await this.assignmentsRepository.findOne({
+    const reloadedAssignment = await assignmentsRepo.findOne({
       where: { id: updatedAssignment.id },
       relations: ['patient', 'test', 'admin', 'assignedByUser'],
     });
@@ -429,12 +456,17 @@ export class AssignmentsService {
     return this.mapToResponseDto(reloadedAssignment!);
   }
 
+  @Transactional({ maxRetries: 3 })
   async updateStatus(
     assignmentId: string,
     dto: UpdateAssignmentStatusDto,
     userId: string,
   ): Promise<AssignmentResponseDto> {
-    const assignment = await this.assignmentsRepository.findOne({
+    const qr = this.transactionManager.getCurrentTransaction();
+    const assignmentsRepo = new TransactionalRepository(this.assignmentsRepository, qr);
+    const usersRepo = new TransactionalRepository(this.usersRepository, qr);
+
+    const assignment = await assignmentsRepo.findOne({
       where: { id: assignmentId },
     });
 
@@ -443,7 +475,7 @@ export class AssignmentsService {
     }
 
     // Validate user owns assignment (for TEST_TECHNICIAN/LAB_TECHNICIAN)
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    const user = await usersRepo.findOne({ where: { id: userId } });
     if (
       (user?.role === UserRole.TEST_TECHNICIAN || user?.role === UserRole.LAB_TECHNICIAN) &&
       assignment.adminId !== userId
@@ -466,7 +498,7 @@ export class AssignmentsService {
       assignment.completedAt = new Date();
     }
 
-    const updatedAssignment = await this.assignmentsRepository.save(assignment);
+    const updatedAssignment = await assignmentsRepo.save(assignment);
 
     // Log audit
     await this.auditService.log(userId, 'ASSIGNMENT_STATUS_UPDATED', 'Assignment', assignment.id, {
@@ -570,8 +602,13 @@ export class AssignmentsService {
     return this.mapToResponseDtos(assignments);
   }
 
+  @Transactional({ maxRetries: 3 })
   async claimAssignment(assignmentId: string, userId: string): Promise<AssignmentResponseDto> {
-    const assignment = await this.assignmentsRepository.findOne({
+    const qr = this.transactionManager.getCurrentTransaction();
+    const assignmentsRepo = new TransactionalRepository(this.assignmentsRepository, qr);
+    const usersRepo = new TransactionalRepository(this.usersRepository, qr);
+
+    const assignment = await assignmentsRepo.findOne({
       where: { id: assignmentId },
       relations: ['test'],
     });
@@ -584,7 +621,7 @@ export class AssignmentsService {
       throw new BadRequestException('Assignment is already assigned');
     }
 
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    const user = await usersRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -603,10 +640,10 @@ export class AssignmentsService {
     // If not manually assigned by a receptionist, we can say assigned by self or system
     // assignment.assignedBy = userId; // Optional: track who claimed it?
 
-    const savedAssignment = await this.assignmentsRepository.save(assignment);
+    const savedAssignment = await assignmentsRepo.save(assignment);
 
     // Reload with relations
-    const reloadedAssignment = await this.assignmentsRepository.findOne({
+    const reloadedAssignment = await assignmentsRepo.findOne({
       where: { id: savedAssignment.id },
       relations: ['patient', 'test', 'admin', 'assignedByUser'],
     });

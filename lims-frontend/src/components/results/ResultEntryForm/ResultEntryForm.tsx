@@ -70,11 +70,11 @@ export const ResultEntryForm: React.FC = () => {
         }
 
         // Check if we can view/edit based on status and ownership
-        const canEdit = isEditMode && 
-          assignmentData.status === AssignmentStatus.SUBMITTED && 
+        const canEdit = isEditMode &&
+          assignmentData.status === AssignmentStatus.SUBMITTED &&
           assignmentData.adminId === user?.id;
-        const canSubmit = assignmentData.status === AssignmentStatus.IN_PROGRESS || 
-                          assignmentData.status === AssignmentStatus.ASSIGNED;
+        const canSubmit = assignmentData.status === AssignmentStatus.IN_PROGRESS ||
+          assignmentData.status === AssignmentStatus.ASSIGNED;
 
         // If edit mode, fetch existing result
         if (isEditMode && canEdit) {
@@ -122,7 +122,12 @@ export const ResultEntryForm: React.FC = () => {
     }
 
     // Store data and open PIN modal instead of submitting directly
-    setPendingSubmissionData({ ...data, editReason } as any);
+    // Only include editReason for edit mode (UpdateResultRequest)
+    if (isEditMode) {
+      setPendingSubmissionData({ ...data, editReason } as UpdateResultRequest);
+    } else {
+      setPendingSubmissionData(data as SubmitResultRequest);
+    }
     setShowPinModal(true);
   };
 
@@ -225,11 +230,11 @@ export const ResultEntryForm: React.FC = () => {
   };
 
   // Determine if form should be displayed
-  const canSubmit = assignment?.status === AssignmentStatus.IN_PROGRESS || 
-                    assignment?.status === AssignmentStatus.ASSIGNED;
-  const canEdit = isEditMode && 
-                  assignment?.status === AssignmentStatus.SUBMITTED && 
-                  assignment?.adminId === user?.id;
+  const canSubmit = assignment?.status === AssignmentStatus.IN_PROGRESS ||
+    assignment?.status === AssignmentStatus.ASSIGNED;
+  const canEdit = isEditMode &&
+    assignment?.status === AssignmentStatus.SUBMITTED &&
+    assignment?.adminId === user?.id;
   const showForm = canSubmit || canEdit;
 
   if (isLoading) {
@@ -279,7 +284,7 @@ export const ResultEntryForm: React.FC = () => {
           )}
         </h1>
         <p className="text-muted-foreground text-lg">
-          {canEdit 
+          {canEdit
             ? 'Update the existing result with corrections.'
             : 'Record findings for the assigned test.'}
         </p>
@@ -369,7 +374,7 @@ export const ResultEntryForm: React.FC = () => {
                   Result Values
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  {canEdit 
+                  {canEdit
                     ? 'Update the observed values as needed.'
                     : 'Please enter the observed values carefully.'}
                 </p>
@@ -432,7 +437,7 @@ export const ResultEntryForm: React.FC = () => {
         onClose={() => setShowPinModal(false)}
         onSuccess={handlePinSuccess}
         title={canEdit ? 'Confirm Update' : 'Confirm Submission'}
-        description={canEdit 
+        description={canEdit
           ? 'Please enter your 4-digit PIN to confirm these changes.'
           : 'Please enter your 4-digit PIN to confirm these results.'
         }

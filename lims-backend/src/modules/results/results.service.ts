@@ -17,6 +17,9 @@ import { ResultValidationService } from './services/result-validation.service';
 import { AuditService } from '../audit/audit.service';
 import { ProjectAccessService } from '../../common/services/project-access.service';
 import { DoctorReview } from '../doctor-reviews/entities/doctor-review.entity';
+import { TransactionManager } from '../../common/database/transaction-manager.service';
+import { Transactional } from '../../common/decorators/transactional.decorator';
+import { TransactionalRepository } from '../../common/database/transactional-repository';
 
 @Injectable()
 export class ResultsService {
@@ -32,12 +35,18 @@ export class ResultsService {
     private resultValidationService: ResultValidationService,
     private auditService: AuditService,
     private projectAccessService: ProjectAccessService,
+    private transactionManager: TransactionManager,
   ) { }
 
+  @Transactional({ maxRetries: 3 })
   async submitResult(dto: SubmitResultDto, currentUser: { id: string, role: string }): Promise<ResultResponseDto> {
     const userId = currentUser.id;
+    const qr = this.transactionManager.getCurrentTransaction();
+    const testResultsRepo = new TransactionalRepository(this.testResultsRepository, qr);
+    const assignmentsRepo = new TransactionalRepository(this.assignmentsRepository, qr);
+
     // Get assignment with test
-    const assignment = await this.assignmentsRepository.findOne({
+    const assignment = await assignmentsRepo.findOne({
       where: { id: dto.assignmentId },
       relations: ['test', 'admin', 'patient'],
     });
@@ -66,7 +75,7 @@ export class ResultsService {
     }
 
     // Check if result already exists
-    const existingResult = await this.testResultsRepository.findOne({
+    const existingResult = await testResultsRepo.findOne({
       where: { assignmentId: dto.assignmentId },
     });
 
@@ -87,7 +96,7 @@ export class ResultsService {
     }
 
     // Create test result
-    const testResult = this.testResultsRepository.create({
+    const testResult = testResultsRepo.create({
       assignmentId: dto.assignmentId,
       resultValues: dto.resultValues,
       notes: dto.notes || null,
@@ -98,11 +107,11 @@ export class ResultsService {
       verifiedAt: null,
     });
 
-    const savedResult = await this.testResultsRepository.save(testResult);
+    const savedResult = await testResultsRepo.save(testResult);
 
     // Update assignment status to SUBMITTED
     assignment.status = AssignmentStatus.SUBMITTED;
-    await this.assignmentsRepository.save(assignment);
+    await assignmentsRepo.save(assignment);
 
     // Log action
     await this.auditService.log(
@@ -119,7 +128,7 @@ export class ResultsService {
     );
 
     // Get result with relations for response
-    const resultWithRelations = await this.testResultsRepository.findOne({
+    const resultWithRelations = await testResultsRepo.findOne({
       where: { id: savedResult.id },
       relations: ['assignment', 'assignment.test', 'assignment.patient', 'enteredByUser', 'verifiedByUser'],
     });
@@ -132,11 +141,17 @@ export class ResultsService {
     return response;
   }
 
+  @Transactional({ maxRetries: 3 })
   async editResult(resultId: string, dto: UpdateResultDto, currentUser: { id: string, role: string }): Promise<ResultResponseDto> {
     const userId = currentUser.id;
+    const qr = this.transactionManager.getCurrentTransaction();
+    const testResultsRepo = new TransactionalRepository(this.testResultsRepository, qr);
+    const assignmentsRepo = new TransactionalRepository(this.assignmentsRepository, qr);
+    const usersRepo = new TransactionalRepository(this.usersRepository, qr);
+    const doctorReviewsRepo = new TransactionalRepository(this.doctorReviewsRepository, qr);
 
     // Get existing result with assignment, test, and patient
-    const result = await this.testResultsRepository.findOne({
+    const result = await testResultsRepo.findOne({
       where: { id: resultId },
       relations: ['assignment', 'assignment.test', 'assignment.patient', 'enteredByUser', 'verifiedByUser'],
     });
@@ -152,7 +167,7 @@ export class ResultsService {
 
     // BLOCK: Only original technician or SUPER_ADMIN can edit
     if (result.enteredBy !== userId) {
-      const user = await this.usersRepository.findOne({ where: { id: userId } });
+      const user = await usersRepo.findOne({ where: { id: userId } });
       if (!user || user.role !== UserRole.SUPER_ADMIN) {
         throw new ForbiddenException('Only the original technician can edit this result');
       }
@@ -202,11 +217,11 @@ export class ResultsService {
     result.editedBy = userId;
     result.editReason = dto.editReason;
 
-    const updatedResult = await this.testResultsRepository.save(result);
+    const updatedResult = await testResultsRepo.save(result);
 
     // Update assignment status back to COMPLETED to allow re-submission
     result.assignment.status = AssignmentStatus.COMPLETED;
-    await this.assignmentsRepository.save(result.assignment);
+    await assignmentsRepo.save(result.assignment);
 
     // Log the edit with before/after values
     await this.auditService.log(
@@ -227,7 +242,7 @@ export class ResultsService {
     );
 
     // Check if doctor review exists and notify
-    const doctorReview = await this.doctorReviewsRepository.findOne({
+    const doctorReview = await doctorReviewsRepo.findOne({
       where: { patientId: result.assignment.patientId },
     });
 
@@ -319,15 +334,20 @@ export class ResultsService {
     return this.mapToResponseDto(result);
   }
 
+  @Transactional({ maxRetries: 3 })
   async updateResult(id: string, dto: UpdateResultDto, userId: string): Promise<ResultResponseDto> {
+    const qr = this.transactionManager.getCurrentTransaction();
+    const testResultsRepo = new TransactionalRepository(this.testResultsRepository, qr);
+    const usersRepo = new TransactionalRepository(this.usersRepository, qr);
+
     // Check user is SUPER_ADMIN
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    const user = await usersRepo.findOne({ where: { id: userId } });
     if (!user || user.role !== UserRole.SUPER_ADMIN) {
       throw new ForbiddenException('Only SUPER_ADMIN can update results');
     }
 
     // Get existing result with assignment and test
-    const result = await this.testResultsRepository.findOne({
+    const result = await testResultsRepo.findOne({
       where: { id },
       relations: ['assignment', 'assignment.test', 'assignment.patient', 'enteredByUser', 'verifiedByUser'],
     });
@@ -365,7 +385,7 @@ export class ResultsService {
     // Set verified_at timestamp
     result.verifiedAt = new Date();
 
-    const updatedResult = await this.testResultsRepository.save(result);
+    const updatedResult = await testResultsRepo.save(result);
 
     // Log changes
     await this.auditService.log(
@@ -387,14 +407,19 @@ export class ResultsService {
     return this.mapToResponseDto(updatedResult);
   }
 
+  @Transactional({ maxRetries: 3 })
   async verifyResult(id: string, userId: string): Promise<ResultResponseDto> {
+    const qr = this.transactionManager.getCurrentTransaction();
+    const testResultsRepo = new TransactionalRepository(this.testResultsRepository, qr);
+    const usersRepo = new TransactionalRepository(this.usersRepository, qr);
+
     // Check user is SUPER_ADMIN
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    const user = await usersRepo.findOne({ where: { id: userId } });
     if (!user || user.role !== UserRole.SUPER_ADMIN) {
       throw new ForbiddenException('Only SUPER_ADMIN can verify results');
     }
 
-    const result = await this.testResultsRepository.findOne({
+    const result = await testResultsRepo.findOne({
       where: { id },
       relations: ['assignment', 'assignment.test', 'assignment.patient', 'enteredByUser', 'verifiedByUser'],
     });
@@ -407,7 +432,7 @@ export class ResultsService {
     result.verifiedBy = userId;
     result.verifiedAt = new Date();
 
-    const verifiedResult = await this.testResultsRepository.save(result);
+    const verifiedResult = await testResultsRepo.save(result);
 
     // Log action
     await this.auditService.log(userId, 'RESULT_VERIFIED', 'TestResult', result.id, {

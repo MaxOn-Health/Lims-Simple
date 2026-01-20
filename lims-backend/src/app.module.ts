@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, getDataSourceToken } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import databaseConfig from './config/database.config';
 import appConfig from './config/app.config';
 import { getThrottlerConfig } from './config/throttler.config';
@@ -29,6 +31,8 @@ import { PasswordService } from './common/services/password.service';
 import { Reflector } from '@nestjs/core';
 import { AuditLoggingInterceptor } from './common/interceptors/audit-logging.interceptor';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { DatabaseModule, TransactionManagerInitializer } from './common/database/database.module';
+import { TransactionManager } from './common/database/transaction-manager.service';
 
 @Module({
   imports: [
@@ -38,6 +42,8 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
       load: [databaseConfig, appConfig],
       envFilePath: ['.env'],
     }),
+    // EventEmitter for transaction.commit events
+    EventEmitterModule.forRoot(),
     // Throttler Module for rate limiting
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
@@ -100,6 +106,8 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
       },
       inject: [ConfigService],
     }),
+    // Transaction management (must be imported before other modules)
+    DatabaseModule.forRoot(),
     AuthModule,
     UsersModule,
     PackagesModule,
@@ -119,6 +127,13 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
   providers: [
     HealthService,
     PasswordService,
+    {
+      provide: TransactionManagerInitializer,
+      useFactory: (transactionManager: TransactionManager, dataSource: any) => {
+        return new TransactionManagerInitializer(transactionManager, dataSource);
+      },
+      inject: [TransactionManager, DataSource],
+    },
     {
       provide: APP_GUARD,
       useFactory: (jwtTokenService: JwtTokenService, reflector: Reflector) => {

@@ -414,21 +414,32 @@ export class ProjectsService {
   /**
    * Update project statistics (patient count and total revenue)
    * Called automatically when a patient is added/removed or payment is updated
+   *
+   * @param projectId - The project ID to update statistics for
+   * @param queryRunner - Optional QueryRunner for transactional operations
    */
-  async updateStatistics(projectId: string): Promise<void> {
-    const project = await this.projectsRepository.findOne({ where: { id: projectId } });
+  async updateStatistics(projectId: string, queryRunner?: any): Promise<void> {
+    // Use TransactionalRepository if QueryRunner is provided
+    const projectsRepo = queryRunner
+      ? new (require('../../common/database/transactional-repository').TransactionalRepository)(this.projectsRepository, queryRunner)
+      : this.projectsRepository;
+    const patientsRepo = queryRunner
+      ? new (require('../../common/database/transactional-repository').TransactionalRepository)(this.patientsRepository, queryRunner)
+      : this.patientsRepository;
+
+    const project = await projectsRepo.findOne({ where: { id: projectId } });
 
     if (!project) {
       return;
     }
 
     // Count patients in this project
-    const patientCount = await this.patientsRepository.count({
+    const patientCount = await patientsRepo.count({
       where: { projectId },
     });
 
     // Calculate total revenue from patient packages
-    const patientsWithPackages = await this.patientsRepository.find({
+    const patientsWithPackages = await patientsRepo.find({
       where: { projectId },
       relations: ['patientPackages'],
     });
@@ -444,7 +455,7 @@ export class ProjectsService {
     project.patientCount = patientCount;
     project.totalRevenue = totalRevenue;
 
-    await this.projectsRepository.save(project);
+    await projectsRepo.save(project);
   }
 
   private mapToResponseDto(project: Project): ProjectResponseDto {

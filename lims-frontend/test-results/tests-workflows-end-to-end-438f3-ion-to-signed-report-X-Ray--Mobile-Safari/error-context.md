@@ -1,0 +1,183 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - alert [ref=e2]
+  - generic [ref=e3]:
+    - generic [ref=e6]:
+      - heading "LIMS" [level=2] [ref=e8]
+      - navigation [ref=e9]:
+        - link "Dashboard" [ref=e10]:
+          - /url: /dashboard
+          - generic [ref=e11]:
+            - img [ref=e13]
+            - text: Dashboard
+        - link "Patients" [ref=e15]:
+          - /url: /patients
+          - generic [ref=e16]:
+            - img [ref=e18]
+            - text: Patients
+        - link "Track Status" [ref=e20]:
+          - /url: /patients/progress
+          - generic [ref=e21]:
+            - img [ref=e23]
+            - text: Track Status
+        - link "Pending Tests" [ref=e25]:
+          - /url: /assignments
+          - generic [ref=e26]:
+            - img [ref=e28]
+            - text: Pending Tests
+        - link "Completed Results" [ref=e30]:
+          - /url: /results
+          - generic [ref=e31]:
+            - img [ref=e33]
+            - text: Completed Results
+        - link "New Sample" [ref=e35]:
+          - /url: /blood-samples/register
+          - generic [ref=e36]:
+            - img [ref=e38]
+            - text: New Sample
+        - link "Reports" [ref=e40]:
+          - /url: /reports
+          - generic [ref=e41]:
+            - img [ref=e43]
+            - text: Reports
+        - link "Projects" [ref=e45]:
+          - /url: /projects
+          - generic [ref=e46]:
+            - img [ref=e48]
+            - text: Projects
+        - link "Settings" [ref=e50]:
+          - /url: /settings
+          - generic [ref=e51]:
+            - img [ref=e53]
+            - text: Settings
+    - generic [ref=e56]:
+      - navigation [ref=e57]:
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - button [ref=e61] [cursor=pointer]:
+              - img [ref=e62]
+            - heading "LIMS Dashboard" [level=1] [ref=e65]
+          - generic [ref=e66]:
+            - button [ref=e67] [cursor=pointer]:
+              - img [ref=e68]
+            - button "Logout" [ref=e71] [cursor=pointer]
+      - main [ref=e72]:
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]:
+              - generic [ref=e83]:
+                - heading "Patient Details" [level=3] [ref=e84]
+                - paragraph [ref=e85]: Basic personal information required for registration
+              - generic [ref=e86]:
+                - generic [ref=e88]:
+                  - text: Full Name *
+                  - textbox "Full Name *" [ref=e89]:
+                    - /placeholder: e.g. John Doe
+                    - text: Test Patient 1768977071870
+                - generic [ref=e90]:
+                  - generic [ref=e92]:
+                    - text: Age *
+                    - spinbutton "Age *" [ref=e93]: "40"
+                  - generic [ref=e94]:
+                    - text: Gender *
+                    - combobox "Gender *" [ref=e95] [cursor=pointer]:
+                      - generic: Male
+                      - img [ref=e96]
+                    - combobox [ref=e98]
+                - generic [ref=e99]:
+                  - generic [ref=e101]:
+                    - text: Phone Number *
+                    - textbox "Phone Number *" [ref=e102]:
+                      - /placeholder: e.g. 9876543210
+                      - text: "9270185763"
+                  - generic [ref=e104]:
+                    - text: Email Address
+                    - textbox "Email Address" [ref=e105]:
+                      - /placeholder: e.g. john@example.com
+                      - text: patient-1768977071870-8485@example.com
+                - generic [ref=e106]:
+                  - text: Address
+                  - textbox "Address" [active] [ref=e107]:
+                    - /placeholder: Enter full address
+                    - text: 123 Test Street, QA Lab
+            - generic [ref=e108]:
+              - generic [ref=e112]:
+                - heading "Employment & Project" [level=3] [ref=e113]
+                - paragraph [ref=e114]: Optional details for corporate or camp patients
+              - generic [ref=e115]:
+                - generic [ref=e116]:
+                  - text: Project / Camp
+                  - combobox "Project / Camp" [ref=e117] [cursor=pointer]:
+                    - generic: None (Individual Patient)
+                    - img [ref=e118]
+                  - combobox [ref=e120]
+                - generic [ref=e121]:
+                  - generic [ref=e123]:
+                    - text: Employee ID
+                    - textbox "Employee ID" [ref=e124]:
+                      - /placeholder: e.g. EMP001
+                  - generic [ref=e126]:
+                    - text: Company Name
+                    - textbox "Company Name" [ref=e127]:
+                      - /placeholder: e.g. Tech Corp
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - generic [ref=e131]:
+                - heading "Test Selection" [level=3] [ref=e132]
+                - paragraph [ref=e133]: Choose a package or individual tests
+              - generic [ref=e134]:
+                - generic [ref=e135]:
+                  - text: Select Package
+                  - combobox "Select Package" [ref=e136] [cursor=pointer]:
+                    - generic: No Package
+                    - img [ref=e137]
+                  - combobox [ref=e139]
+                - generic [ref=e140]:
+                  - text: Select Tests *
+                  - generic [ref=e141]:
+                    - generic [ref=e142]:
+                      - checkbox "Blood Test - Complete Blood Count" [ref=e143] [cursor=pointer]
+                      - checkbox
+                      - generic [ref=e144] [cursor=pointer]:
+                        - generic [ref=e145]: Blood Test - Complete Blood Count
+                        - paragraph [ref=e146]: CBC test
+                    - generic [ref=e147]:
+                      - checkbox "PFT Test" [ref=e148] [cursor=pointer]
+                      - checkbox
+                      - generic [ref=e149] [cursor=pointer]:
+                        - generic [ref=e150]: PFT Test
+                        - paragraph [ref=e151]: Pulmonary Function Test
+                    - generic [ref=e152]:
+                      - checkbox "Eye Test" [ref=e153] [cursor=pointer]
+                      - checkbox
+                      - generic [ref=e154] [cursor=pointer]:
+                        - generic [ref=e155]: Eye Test
+                        - paragraph [ref=e156]: Vision test
+                    - generic [ref=e157]:
+                      - checkbox "X-Ray Chest" [ref=e158] [cursor=pointer]
+                      - checkbox
+                      - generic [ref=e159] [cursor=pointer]:
+                        - generic [ref=e160]: X-Ray Chest
+                        - paragraph [ref=e161]: Chest X-Ray examination
+                    - generic [ref=e162]:
+                      - checkbox "Audiometry Test" [ref=e163] [cursor=pointer]
+                      - checkbox
+                      - generic [ref=e164] [cursor=pointer]:
+                        - generic [ref=e165]: Audiometry Test
+                        - paragraph [ref=e166]: Hearing test for both ears at multiple frequencies (125, 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000 Hz)
+            - generic [ref=e168]:
+              - generic [ref=e169]:
+                - generic [ref=e170]:
+                  - generic [ref=e171]: Package
+                  - generic [ref=e172]: ₹0.00
+                - generic [ref=e173]:
+                  - generic [ref=e174]: Tests (0)
+                  - generic [ref=e175]: ₹0.00
+                - generic [ref=e176]:
+                  - generic [ref=e177]: Total
+                  - generic [ref=e178]: ₹0.00
+              - button "Register Patient" [ref=e179] [cursor=pointer]
+              - button "Cancel" [ref=e180] [cursor=pointer]
+```
